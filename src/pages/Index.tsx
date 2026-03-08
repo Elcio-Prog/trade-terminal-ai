@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Timeframe } from "@/types/trading";
 import { mockData } from "@/services/api";
+import { useHealthCheck, useConfig, useEngineState, useChartData, useRunOnce } from "@/hooks/useTrading";
 import { HeaderBar } from "@/components/trading/HeaderBar";
 import { Watchlist } from "@/components/trading/Watchlist";
 import { CandlestickChart } from "@/components/trading/CandlestickChart";
@@ -8,11 +9,26 @@ import { AISignalPanel } from "@/components/trading/AISignalPanel";
 import { PositionPanel } from "@/components/trading/PositionPanel";
 import { TradeHistory } from "@/components/trading/TradeHistory";
 import { LogsPanel } from "@/components/trading/LogsPanel";
+import { Play, Loader2 } from "lucide-react";
 
 const Index = () => {
   const [selectedSymbol, setSelectedSymbol] = useState("WINJ26");
   const [timeframe, setTimeframe] = useState<Timeframe>("M5");
   const [activeBottomTab, setActiveBottomTab] = useState<"trades" | "logs">("trades");
+
+  // ── API hooks ──
+  const connected = useHealthCheck(8_000);
+  const config = useConfig();
+  const { state } = useEngineState(3_000);
+  const { candles } = useChartData(selectedSymbol, timeframe);
+  const { execute: runOnce, running } = useRunOnce();
+
+  // Derive data — fallback to mocks when backend is offline
+  const signal = state.signal ?? mockData.signal;
+  const position = state.position ?? mockData.position;
+  const trades = (state as any).trades ?? mockData.trades;
+  const logs = (state as any).logs ?? mockData.logs;
+  const mode = state.mode ?? "PAPER";
 
   return (
     <div className="h-screen flex flex-col bg-terminal-bg overflow-hidden">
@@ -20,8 +36,8 @@ const Index = () => {
       <HeaderBar
         symbol={selectedSymbol}
         timeframe={timeframe}
-        mode="PAPER"
-        connected={true}
+        mode={mode}
+        connected={connected}
         onTimeframeChange={setTimeframe}
       />
 
@@ -40,7 +56,7 @@ const Index = () => {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Chart */}
           <div className="flex-1 min-h-0">
-            <CandlestickChart data={mockData.candles} />
+            <CandlestickChart data={candles} />
           </div>
 
           {/* Bottom Panel - Trades/Logs */}
@@ -69,22 +85,38 @@ const Index = () => {
             </div>
             <div className="flex-1 overflow-hidden">
               {activeBottomTab === "trades" ? (
-                <TradeHistory trades={mockData.trades} />
+                <TradeHistory trades={trades} />
               ) : (
-                <LogsPanel logs={mockData.logs} />
+                <LogsPanel logs={logs} />
               )}
             </div>
           </div>
         </div>
 
-        {/* Right Sidebar - AI Signal + Position */}
+        {/* Right Sidebar - AI Signal + Position + Run Button */}
         <aside className="w-72 border-l border-border shrink-0 overflow-y-auto scrollbar-thin">
           <div className="space-y-0">
-            <AISignalPanel signal={mockData.signal} />
+            {/* Botão Rodar IA */}
+            <div className="p-3 border-b border-border">
+              <button
+                onClick={runOnce}
+                disabled={running}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-sm font-mono text-xs font-bold uppercase tracking-wider transition-all bg-primary text-primary-foreground hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {running ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+                {running ? "Processando…" : "Rodar IA Agora"}
+              </button>
+            </div>
+
+            <AISignalPanel signal={signal} />
             <PositionPanel
-              position={mockData.position}
-              sessionPnl={mockData.engineState.session_pnl}
-              tradesCount={mockData.engineState.trades_count}
+              position={position}
+              sessionPnl={state.session_pnl}
+              tradesCount={state.trades_count}
             />
           </div>
         </aside>
