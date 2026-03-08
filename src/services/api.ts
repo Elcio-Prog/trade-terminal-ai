@@ -5,7 +5,7 @@
 // ⚠️  ALTERE A URL ABAIXO PARA O ENDEREÇO DO SEU BACKEND:
 //     Ex: "http://localhost:8000" ou "http://192.168.1.100:8000"
 //
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "http://127.0.0.1:8787";
 // ============================================================
 
 import type {
