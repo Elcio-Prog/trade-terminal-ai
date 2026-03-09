@@ -1,1 +1,4 @@
 project_id = "flaqutawfzzdapesbpck"
+
+[functions.bridge-proxy]
+verify_jwt = false
