@@ -405,6 +405,74 @@ export type Database = {
         }
         Relationships: []
       }
+      continuous_market_candles: {
+        Row: {
+          base_symbol: string
+          close: number
+          created_at: string
+          high: number
+          id: string
+          low: number
+          open: number
+          roll_method: string
+          seq_no: number | null
+          source_instrument_id: string | null
+          source_symbol: string
+          timeframe: string
+          trade_count: number | null
+          ts_close: string
+          ts_open: string
+          volume: number | null
+          vwap: number | null
+        }
+        Insert: {
+          base_symbol: string
+          close: number
+          created_at?: string
+          high: number
+          id?: string
+          low: number
+          open: number
+          roll_method?: string
+          seq_no?: number | null
+          source_instrument_id?: string | null
+          source_symbol: string
+          timeframe: string
+          trade_count?: number | null
+          ts_close: string
+          ts_open: string
+          volume?: number | null
+          vwap?: number | null
+        }
+        Update: {
+          base_symbol?: string
+          close?: number
+          created_at?: string
+          high?: number
+          id?: string
+          low?: number
+          open?: number
+          roll_method?: string
+          seq_no?: number | null
+          source_instrument_id?: string | null
+          source_symbol?: string
+          timeframe?: string
+          trade_count?: number | null
+          ts_close?: string
+          ts_open?: string
+          volume?: number | null
+          vwap?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "continuous_market_candles_source_instrument_id_fkey"
+            columns: ["source_instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       execution_commands: {
         Row: {
           acknowledged_at: string | null
