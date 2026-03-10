@@ -16,6 +16,7 @@ type ChartTab = "candles" | "renko";
 const TIMEFRAMES: Timeframe[] = ["M1", "M5", "M15", "M30", "H1"];
 const LIMITS = [100, 300, 500];
 const BRICK_SIZES = [25, 50, 100];
+const RENKO_LIMITS = [300, 500, 1000];
 
 const Dashboard = () => {
   // Data mode & filters
