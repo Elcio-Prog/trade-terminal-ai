@@ -623,6 +623,7 @@ export type Database = {
       continuous_renko_feature_vectors: {
         Row: {
           base_symbol: string
+          brick_index: number | null
           brick_return_1: number | null
           brick_return_3: number | null
           brick_return_5: number | null
@@ -650,6 +651,7 @@ export type Database = {
         }
         Insert: {
           base_symbol: string
+          brick_index?: number | null
           brick_return_1?: number | null
           brick_return_3?: number | null
           brick_return_5?: number | null
@@ -677,6 +679,7 @@ export type Database = {
         }
         Update: {
           base_symbol?: string
+          brick_index?: number | null
           brick_return_1?: number | null
           brick_return_3?: number | null
           brick_return_5?: number | null
