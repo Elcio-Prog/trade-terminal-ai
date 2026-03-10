@@ -94,19 +94,26 @@ export function useContinuousRenko(
   sourceTimeframe: string = "M1",
   brickSize: number = 50,
   limit: number = 300,
-  pollMs: number = 5_000
+  pollMs: number = 5_000,
+  dateFrom?: string | null,
+  dateTo?: string | null
 ) {
   const [bricks, setBricks] = useState<DBRenko[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
   const fetchBricks = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("continuous_market_renko")
       .select("*")
       .eq("base_symbol", baseSymbol)
       .eq("source_timeframe", sourceTimeframe)
-      .eq("brick_size", brickSize)
+      .eq("brick_size", brickSize);
+
+    if (dateFrom) query = query.gte("ts_open", dateFrom);
+    if (dateTo) query = query.lte("ts_open", dateTo);
+
+    const { data, error } = await query
       .order("brick_index", { ascending: false })
       .limit(limit);
 
@@ -118,7 +125,7 @@ export function useContinuousRenko(
       }
     }
     setLoading(false);
-  }, [baseSymbol, sourceTimeframe, brickSize, limit]);
+  }, [baseSymbol, sourceTimeframe, brickSize, limit, dateFrom, dateTo]);
 
   useEffect(() => {
     setLoading(true);
