@@ -79,8 +79,10 @@ export function useContinuousCandles(
   useEffect(() => {
     setLoading(true);
     fetchCandles();
-    const id = setInterval(fetchCandles, pollMs);
-    return () => clearInterval(id);
+    if (pollMs > 0) {
+      const id = setInterval(fetchCandles, pollMs);
+      return () => clearInterval(id);
+    }
   }, [fetchCandles, pollMs]);
 
   return { candles, loading, lastUpdate };
