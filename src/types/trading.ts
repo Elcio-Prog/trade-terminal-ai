@@ -2,7 +2,7 @@
 // TIPOS DO SISTEMA DE TRADING
 // ============================================================
 
-export type Timeframe = "M1" | "M5" | "M15" | "H1";
+export type Timeframe = "M1" | "M5" | "M15" | "M30" | "H1";
 
 export type Direction = "LONG" | "SHORT" | "NEUTRAL";
 
@@ -27,7 +27,7 @@ export interface CandleData {
 
 export interface AISignal {
   direction: Direction;
-  probability: number; // 0-1
+  probability: number;
   contracts: number;
   regime: Regime;
   vol_regime: VolRegime;
@@ -91,4 +91,52 @@ export interface BackendConfig {
   mode: TradingMode;
   available_symbols: string[];
   available_timeframes: Timeframe[];
+}
+
+// ============================================================
+// DB Row types (from Supabase tables)
+// ============================================================
+
+export interface DBCandle {
+  id: string;
+  base_symbol: string;
+  source_symbol: string;
+  timeframe: string;
+  ts_open: string;
+  ts_close: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+  vwap: number | null;
+  trade_count: number | null;
+}
+
+export interface DBRenko {
+  id: string;
+  base_symbol: string;
+  source_timeframe: string;
+  brick_size: number;
+  brick_index: number | null;
+  direction: string;
+  ts_open: string;
+  ts_close: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  source_row_count: number | null;
+}
+
+export interface DBBridgeAgent {
+  id: string;
+  agent_name: string;
+  status: string;
+  last_heartbeat_at: string;
+  host_name: string | null;
+  ip_address: string | null;
+  app_version: string | null;
+  capabilities_json: any;
+  created_at: string;
 }
