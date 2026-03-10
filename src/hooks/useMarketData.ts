@@ -44,23 +44,29 @@ export function useContinuousCandles(
   baseSymbol: string,
   timeframe: Timeframe,
   limit: number = 300,
-  pollMs: number = 5_000
+  pollMs: number = 5_000,
+  dateFrom?: string | null,
+  dateTo?: string | null
 ) {
   const [candles, setCandles] = useState<DBCandle[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
   const fetchCandles = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("continuous_market_candles")
       .select("*")
       .eq("base_symbol", baseSymbol)
-      .eq("timeframe", timeframe)
+      .eq("timeframe", timeframe);
+
+    if (dateFrom) query = query.gte("ts_open", dateFrom);
+    if (dateTo) query = query.lte("ts_open", dateTo);
+
+    const { data, error } = await query
       .order("ts_open", { ascending: false })
       .limit(limit);
 
     if (!error && data) {
-      // Reverse so oldest first for chart rendering
       const rows = (data as unknown as DBCandle[]).reverse();
       setCandles(rows);
       if (rows.length > 0) {
@@ -68,13 +74,15 @@ export function useContinuousCandles(
       }
     }
     setLoading(false);
-  }, [baseSymbol, timeframe, limit]);
+  }, [baseSymbol, timeframe, limit, dateFrom, dateTo]);
 
   useEffect(() => {
     setLoading(true);
     fetchCandles();
-    const id = setInterval(fetchCandles, pollMs);
-    return () => clearInterval(id);
+    if (pollMs > 0) {
+      const id = setInterval(fetchCandles, pollMs);
+      return () => clearInterval(id);
+    }
   }, [fetchCandles, pollMs]);
 
   return { candles, loading, lastUpdate };
@@ -88,19 +96,26 @@ export function useContinuousRenko(
   sourceTimeframe: string = "M1",
   brickSize: number = 50,
   limit: number = 300,
-  pollMs: number = 5_000
+  pollMs: number = 5_000,
+  dateFrom?: string | null,
+  dateTo?: string | null
 ) {
   const [bricks, setBricks] = useState<DBRenko[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
   const fetchBricks = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("continuous_market_renko")
       .select("*")
       .eq("base_symbol", baseSymbol)
       .eq("source_timeframe", sourceTimeframe)
-      .eq("brick_size", brickSize)
+      .eq("brick_size", brickSize);
+
+    if (dateFrom) query = query.gte("ts_open", dateFrom);
+    if (dateTo) query = query.lte("ts_open", dateTo);
+
+    const { data, error } = await query
       .order("brick_index", { ascending: false })
       .limit(limit);
 
@@ -112,13 +127,15 @@ export function useContinuousRenko(
       }
     }
     setLoading(false);
-  }, [baseSymbol, sourceTimeframe, brickSize, limit]);
+  }, [baseSymbol, sourceTimeframe, brickSize, limit, dateFrom, dateTo]);
 
   useEffect(() => {
     setLoading(true);
     fetchBricks();
-    const id = setInterval(fetchBricks, pollMs);
-    return () => clearInterval(id);
+    if (pollMs > 0) {
+      const id = setInterval(fetchBricks, pollMs);
+      return () => clearInterval(id);
+    }
   }, [fetchBricks, pollMs]);
 
   return { bricks, loading, lastUpdate };

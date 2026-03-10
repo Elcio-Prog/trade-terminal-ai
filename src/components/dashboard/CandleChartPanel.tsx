@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useContinuousCandles } from "@/hooks/useMarketData";
 import { CandlestickChart } from "@/components/trading/CandlestickChart";
+import { DateNavigator, dateToRange } from "@/components/dashboard/DateNavigator";
 import type { CandleData, Timeframe } from "@/types/trading";
-import { BarChart3, RefreshCw, Loader2 } from "lucide-react";
+import { BarChart3, Loader2 } from "lucide-react";
 
 const TIMEFRAMES: Timeframe[] = ["M1", "M5", "M15", "M30", "H1"];
 const LIMITS = [100, 300, 500];
@@ -10,8 +11,14 @@ const LIMITS = [100, 300, 500];
 export function CandleChartPanel() {
   const [timeframe, setTimeframe] = useState<Timeframe>("M5");
   const [limit, setLimit] = useState(300);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const { candles, loading, lastUpdate } = useContinuousCandles("WIN", timeframe, limit, 5_000);
+  const { dateFrom, dateTo } = dateToRange(selectedDate);
+  const isLive = selectedDate === null;
+
+  const { candles, loading, lastUpdate } = useContinuousCandles(
+    "WIN", timeframe, limit, isLive ? 5_000 : 0, dateFrom, dateTo
+  );
 
   const chartData: CandleData[] = useMemo(
     () =>
@@ -45,10 +52,18 @@ export function CandleChartPanel() {
               </span>
             </>
           )}
+          {!isLive && (
+            <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded-sm bg-warning/20 text-warning uppercase">
+              Histórico
+            </span>
+          )}
           {loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Date navigator */}
+          <DateNavigator selectedDate={selectedDate} onDateChange={setSelectedDate} />
+
           {/* Limit selector */}
           <div className="flex items-center gap-1 bg-secondary/50 rounded-sm p-0.5">
             {LIMITS.map((l) => (
@@ -97,7 +112,7 @@ export function CandleChartPanel() {
                 Carregando candles...
               </div>
             ) : (
-              "Nenhum dado disponível para WIN / " + timeframe
+              "Nenhum dado disponível para WIN / " + timeframe + (selectedDate ? ` em ${selectedDate.toLocaleDateString("pt-BR")}` : "")
             )}
           </div>
         )}
