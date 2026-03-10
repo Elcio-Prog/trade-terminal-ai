@@ -29,35 +29,34 @@ serve(async (req) => {
     const baseSymbol = body.base_symbol || "WIN";
     const timeframe = body.timeframe || "M1";
     const brickSize: number = body.brick_size || 50;
+    // Resume support: pass ref_price & brick_index & start_offset to continue
+    const startOffset: number = body.start_offset || 0;
+    let refPrice: number | null = body.ref_price ?? null;
+    let brickIndex: number = body.brick_index ?? 0;
+    const deleteFirst: boolean = body.delete_first !== false && startOffset === 0;
 
-    console.log(`[renko-rebuild] ${baseSymbol}/${timeframe} brick_size=${brickSize}`);
+    console.log(`[renko] bs=${brickSize} offset=${startOffset} refPrice=${refPrice} brickIdx=${brickIndex}`);
 
-    // ── Paginate ALL candle closes ──
+    // Delete existing only on first run
+    if (deleteFirst) {
+      await supabase
+        .from("continuous_market_renko")
+        .delete()
+        .eq("base_symbol", baseSymbol)
+        .eq("source_timeframe", timeframe)
+        .eq("brick_size", brickSize);
+    }
+
     const PAGE = 1000;
-    let offset = 0;
-    let hasMore = true;
-
-    // Renko state
-    let refPrice: number | null = null;
-    let brickIndex = 0;
+    const MAX_PAGES = 5; // Process max 5000 candles per call to stay within limits
+    let offset = startOffset;
+    let pagesProcessed = 0;
+    let totalBricks = 0;
     let totalCandles = 0;
-    let firstTs = "";
+    let hasMore = true;
     let lastTs = "";
 
-    // Delete existing
-    const { error: delErr } = await supabase
-      .from("continuous_market_renko")
-      .delete()
-      .eq("base_symbol", baseSymbol)
-      .eq("source_timeframe", timeframe)
-      .eq("brick_size", brickSize);
-    if (delErr) console.error("Delete error:", delErr.message);
-
-    let totalBricks = 0;
-    let minBrickTs = "";
-    let maxBrickTs = "";
-
-    while (hasMore) {
+    while (hasMore && pagesProcessed < MAX_PAGES) {
       const { data: candles, error } = await supabase
         .from("continuous_market_candles")
         .select("ts_open, ts_close, close")
@@ -66,21 +65,16 @@ serve(async (req) => {
         .order("ts_open", { ascending: true })
         .range(offset, offset + PAGE - 1);
 
-      if (error) throw new Error(`Fetch error at offset ${offset}: ${error.message}`);
+      if (error) throw new Error(`Fetch error: ${error.message}`);
       if (!candles || candles.length === 0) { hasMore = false; break; }
 
       totalCandles += candles.length;
-      if (!firstTs && candles.length > 0) firstTs = candles[0].ts_open;
-      lastTs = candles[candles.length - 1].ts_close;
 
-      // Init ref price from first candle
       if (refPrice === null) {
         refPrice = Math.floor(Number(candles[0].close) / brickSize) * brickSize;
       }
 
-      // Build bricks from this page
       const bricks: any[] = [];
-
       for (const c of candles) {
         const closePrice = Number(c.close);
         const diff = closePrice - refPrice!;
@@ -94,7 +88,6 @@ serve(async (req) => {
         for (let b = 0; b < numBricks; b++) {
           const brickOpen = refPrice!;
           const brickClose = refPrice! + step;
-
           bricks.push({
             base_symbol: baseSymbol,
             source_timeframe: timeframe,
@@ -111,44 +104,42 @@ serve(async (req) => {
             source_open_ts: c.ts_open,
             source_close_ts: c.ts_close,
           });
-
           refPrice = brickClose;
           brickIndex++;
         }
       }
 
-      // Insert bricks from this page in batches
+      // Insert
       if (bricks.length > 0) {
-        const BATCH = 300;
-        for (let i = 0; i < bricks.length; i += BATCH) {
-          const batch = bricks.slice(i, i + BATCH);
-          const { error: insErr } = await supabase
-            .from("continuous_market_renko")
-            .insert(batch);
+        for (let i = 0; i < bricks.length; i += 300) {
+          const batch = bricks.slice(i, i + 300);
+          const { error: insErr } = await supabase.from("continuous_market_renko").insert(batch);
           if (insErr) throw new Error(`Insert error: ${insErr.message}`);
         }
         totalBricks += bricks.length;
-        if (!minBrickTs) minBrickTs = bricks[0].ts_open;
-        maxBrickTs = bricks[bricks.length - 1].ts_close;
       }
 
+      lastTs = candles[candles.length - 1].ts_close;
       offset += candles.length;
+      pagesProcessed++;
       if (candles.length < PAGE) hasMore = false;
     }
 
-    const result = {
+    return new Response(JSON.stringify({
       success: true,
-      base_symbol: baseSymbol,
       brick_size: brickSize,
-      candles_loaded: totalCandles,
-      candles_range: { first: firstTs, last: lastTs },
+      candles_processed: totalCandles,
       bricks_generated: totalBricks,
-      bricks_range: { first: minBrickTs, last: maxBrickTs },
-    };
-
-    console.log("[renko-rebuild] Done:", JSON.stringify(result));
-
-    return new Response(JSON.stringify(result), {
+      last_ts: lastTs,
+      has_more: hasMore,
+      // Resume params for next call
+      resume: hasMore ? {
+        start_offset: offset,
+        ref_price: refPrice,
+        brick_index: brickIndex,
+        delete_first: false,
+      } : null,
+    }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
