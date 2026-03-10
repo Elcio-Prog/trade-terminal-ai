@@ -44,23 +44,29 @@ export function useContinuousCandles(
   baseSymbol: string,
   timeframe: Timeframe,
   limit: number = 300,
-  pollMs: number = 5_000
+  pollMs: number = 5_000,
+  dateFrom?: string | null,
+  dateTo?: string | null
 ) {
   const [candles, setCandles] = useState<DBCandle[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
   const fetchCandles = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("continuous_market_candles")
       .select("*")
       .eq("base_symbol", baseSymbol)
-      .eq("timeframe", timeframe)
+      .eq("timeframe", timeframe);
+
+    if (dateFrom) query = query.gte("ts_open", dateFrom);
+    if (dateTo) query = query.lte("ts_open", dateTo);
+
+    const { data, error } = await query
       .order("ts_open", { ascending: false })
       .limit(limit);
 
     if (!error && data) {
-      // Reverse so oldest first for chart rendering
       const rows = (data as unknown as DBCandle[]).reverse();
       setCandles(rows);
       if (rows.length > 0) {
@@ -68,7 +74,7 @@ export function useContinuousCandles(
       }
     }
     setLoading(false);
-  }, [baseSymbol, timeframe, limit]);
+  }, [baseSymbol, timeframe, limit, dateFrom, dateTo]);
 
   useEffect(() => {
     setLoading(true);
