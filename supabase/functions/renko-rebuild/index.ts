@@ -48,7 +48,7 @@ serve(async (req) => {
     }
 
     const PAGE = 1000;
-    const MAX_PAGES = 5; // Process max 5000 candles per call to stay within limits
+    const MAX_PAGES = 2; // Process max 2000 candles per call
     let offset = startOffset;
     let pagesProcessed = 0;
     let totalBricks = 0;
