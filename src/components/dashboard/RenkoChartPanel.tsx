@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useContinuousRenko } from "@/hooks/useMarketData";
 import { DateNavigator, dateToRange } from "@/components/dashboard/DateNavigator";
-import { createChart, CandlestickSeries, type IChartApi, type CandlestickData, type Time } from "lightweight-charts";
+import { createChart, CandlestickSeries, type IChartApi, type ISeriesApi, type CandlestickData, type Time } from "lightweight-charts";
 import { Blocks, Loader2 } from "lucide-react";
 
 const BRICK_SIZES = [25, 50, 100];
@@ -21,6 +21,7 @@ export function RenkoChartPanel() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
 
   const chartData: CandlestickData[] = useMemo(
     () =>
@@ -34,6 +35,7 @@ export function RenkoChartPanel() {
     [bricks]
   );
 
+  // Create chart once
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -73,12 +75,8 @@ export function RenkoChartPanel() {
       wickDownColor: "hsl(0, 72%, 56%)",
     });
 
-    if (chartData.length > 0) {
-      series.setData(chartData);
-      chart.timeScale().fitContent();
-    }
-
     chartRef.current = chart;
+    seriesRef.current = series;
 
     const observer = new ResizeObserver(() => {
       if (containerRef.current) {
@@ -93,7 +91,18 @@ export function RenkoChartPanel() {
     return () => {
       observer.disconnect();
       chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
     };
+  }, []); // Create only once
+
+  // Update data separately
+  useEffect(() => {
+    if (!seriesRef.current || !chartRef.current) return;
+    seriesRef.current.setData(chartData);
+    if (chartData.length > 0) {
+      chartRef.current.timeScale().fitContent();
+    }
   }, [chartData]);
 
   const lastBrick = bricks.length > 0 ? bricks[bricks.length - 1] : null;
@@ -124,10 +133,8 @@ export function RenkoChartPanel() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Date navigator */}
           <DateNavigator selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
-          {/* Limit selector */}
           <div className="flex items-center gap-1 bg-secondary/50 rounded-sm p-0.5">
             {LIMITS.map((l) => (
               <button
@@ -144,7 +151,6 @@ export function RenkoChartPanel() {
             ))}
           </div>
 
-          {/* Brick size selector */}
           <div className="flex items-center gap-1 bg-secondary/50 rounded-sm p-0.5">
             {BRICK_SIZES.map((bs) => (
               <button
@@ -163,19 +169,18 @@ export function RenkoChartPanel() {
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="flex-1 min-h-0">
-        {chartData.length > 0 ? (
-          <div ref={containerRef} className="w-full h-full min-h-[200px]" />
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+      {/* Chart - always render the container */}
+      <div className="flex-1 min-h-0 relative">
+        <div ref={containerRef} className="w-full h-full min-h-[200px]" />
+        {chartData.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm bg-card/80">
             {loading ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Carregando bricks...
               </div>
             ) : (
-              <div ref={containerRef} className="w-full h-full min-h-[200px]" />
+              "Nenhum dado disponível"
             )}
           </div>
         )}

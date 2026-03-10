@@ -22,14 +22,23 @@ export function CandleChartPanel() {
 
   const chartData: CandleData[] = useMemo(
     () =>
-      candles.map((c) => ({
-        time: Math.floor(new Date(c.ts_open).getTime() / 1000),
-        open: Number(c.open),
-        high: Number(c.high),
-        low: Number(c.low),
-        close: Number(c.close),
-        volume: c.volume ? Number(c.volume) : undefined,
-      })),
+      candles
+        .filter((c) => {
+          // Filter out after-hours noise: candles where O=H=L=C (zero range) and very low volume
+          const o = Number(c.open), h = Number(c.high), l = Number(c.low), cl = Number(c.close);
+          if (o === h && h === l && l === cl && c.volume !== null && Number(c.volume) < 500) {
+            return false;
+          }
+          return true;
+        })
+        .map((c) => ({
+          time: Math.floor(new Date(c.ts_open).getTime() / 1000),
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
+          volume: c.volume ? Number(c.volume) : undefined,
+        })),
     [candles]
   );
 
