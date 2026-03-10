@@ -111,8 +111,8 @@ serve(async (req) => {
 
       // Insert
       if (bricks.length > 0) {
-        for (let i = 0; i < bricks.length; i += 300) {
-          const batch = bricks.slice(i, i + 300);
+        for (let i = 0; i < bricks.length; i += 1000) {
+          const batch = bricks.slice(i, i + 1000);
           const { error: insErr } = await supabase.from("continuous_market_renko").insert(batch);
           if (insErr) throw new Error(`Insert error: ${insErr.message}`);
         }
