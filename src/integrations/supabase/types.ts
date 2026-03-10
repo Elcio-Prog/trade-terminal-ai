@@ -405,6 +405,96 @@ export type Database = {
         }
         Relationships: []
       }
+      continuous_feature_vectors: {
+        Row: {
+          base_symbol: string
+          body_points: number | null
+          close_vs_ma_20: number | null
+          close_vs_ma_9: number | null
+          close_vs_prev_close: number | null
+          created_at: string
+          down_seq_count: number | null
+          feature_set_version: string
+          id: string
+          lower_wick: number | null
+          range_points: number | null
+          ret_1: number | null
+          ret_10: number | null
+          ret_3: number | null
+          ret_5: number | null
+          rolling_high_20_dist: number | null
+          rolling_low_20_dist: number | null
+          source_features_json: Json | null
+          source_row_id: string | null
+          source_table: string
+          source_type: string
+          timeframe: string
+          ts_reference: string
+          up_seq_count: number | null
+          upper_wick: number | null
+          vol_mean_20: number | null
+          vol_mean_5: number | null
+        }
+        Insert: {
+          base_symbol: string
+          body_points?: number | null
+          close_vs_ma_20?: number | null
+          close_vs_ma_9?: number | null
+          close_vs_prev_close?: number | null
+          created_at?: string
+          down_seq_count?: number | null
+          feature_set_version?: string
+          id?: string
+          lower_wick?: number | null
+          range_points?: number | null
+          ret_1?: number | null
+          ret_10?: number | null
+          ret_3?: number | null
+          ret_5?: number | null
+          rolling_high_20_dist?: number | null
+          rolling_low_20_dist?: number | null
+          source_features_json?: Json | null
+          source_row_id?: string | null
+          source_table: string
+          source_type: string
+          timeframe: string
+          ts_reference: string
+          up_seq_count?: number | null
+          upper_wick?: number | null
+          vol_mean_20?: number | null
+          vol_mean_5?: number | null
+        }
+        Update: {
+          base_symbol?: string
+          body_points?: number | null
+          close_vs_ma_20?: number | null
+          close_vs_ma_9?: number | null
+          close_vs_prev_close?: number | null
+          created_at?: string
+          down_seq_count?: number | null
+          feature_set_version?: string
+          id?: string
+          lower_wick?: number | null
+          range_points?: number | null
+          ret_1?: number | null
+          ret_10?: number | null
+          ret_3?: number | null
+          ret_5?: number | null
+          rolling_high_20_dist?: number | null
+          rolling_low_20_dist?: number | null
+          source_features_json?: Json | null
+          source_row_id?: string | null
+          source_table?: string
+          source_type?: string
+          timeframe?: string
+          ts_reference?: string
+          up_seq_count?: number | null
+          upper_wick?: number | null
+          vol_mean_20?: number | null
+          vol_mean_5?: number | null
+        }
+        Relationships: []
+      }
       continuous_market_candles: {
         Row: {
           base_symbol: string
