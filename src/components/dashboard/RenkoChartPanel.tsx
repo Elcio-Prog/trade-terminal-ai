@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useContinuousRenko } from "@/hooks/useMarketData";
+import { DateNavigator, dateToRange } from "@/components/dashboard/DateNavigator";
 import { createChart, CandlestickSeries, type IChartApi, type CandlestickData, type Time } from "lightweight-charts";
 import { Blocks, Loader2 } from "lucide-react";
 
@@ -9,17 +10,22 @@ const LIMITS = [100, 300, 500];
 export function RenkoChartPanel() {
   const [brickSize, setBrickSize] = useState(50);
   const [limit, setLimit] = useState(300);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const { bricks, loading, lastUpdate } = useContinuousRenko("WIN", "M1", brickSize, limit, 5_000);
+  const { dateFrom, dateTo } = dateToRange(selectedDate);
+  const isLive = selectedDate === null;
+
+  const { bricks, loading, lastUpdate } = useContinuousRenko(
+    "WIN", "M1", brickSize, limit, isLive ? 5_000 : 0, dateFrom, dateTo
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
-  // Convert renko bricks to candlestick-like representation
   const chartData: CandlestickData[] = useMemo(
     () =>
       bricks.map((b, i) => ({
-        time: (Math.floor(new Date(b.ts_open).getTime() / 1000) + i) as Time, // ensure unique times
+        time: (Math.floor(new Date(b.ts_open).getTime() / 1000) + i) as Time,
         open: Number(b.open),
         high: Number(b.high),
         low: Number(b.low),
@@ -109,10 +115,18 @@ export function RenkoChartPanel() {
               </span>
             </>
           )}
+          {!isLive && (
+            <span className="px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded-sm bg-warning/20 text-warning uppercase">
+              Histórico
+            </span>
+          )}
           {loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Date navigator */}
+          <DateNavigator selectedDate={selectedDate} onDateChange={setSelectedDate} />
+
           {/* Limit selector */}
           <div className="flex items-center gap-1 bg-secondary/50 rounded-sm p-0.5">
             {LIMITS.map((l) => (
