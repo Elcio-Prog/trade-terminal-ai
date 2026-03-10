@@ -1,9 +1,15 @@
 import { useState, useMemo } from "react";
 import { useContinuousCandles } from "@/hooks/useMarketData";
+import { useCandleAvailability } from "@/hooks/useDataAvailability";
 import { CandlestickChart } from "@/components/trading/CandlestickChart";
 import { DateNavigator, dateToRange } from "@/components/dashboard/DateNavigator";
 import type { CandleData, Timeframe } from "@/types/trading";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Loader2, Database, ChevronDown } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const TIMEFRAMES: Timeframe[] = ["M1", "M5", "M15", "M30", "H1"];
 const LIMITS = [100, 300, 500];
@@ -12,19 +18,29 @@ export function CandleChartPanel() {
   const [timeframe, setTimeframe] = useState<Timeframe>("M5");
   const [limit, setLimit] = useState(300);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [sourceSymbol, setSourceSymbol] = useState<string | null>(null);
+  const [showAvailability, setShowAvailability] = useState(false);
 
   const { dateFrom, dateTo } = dateToRange(selectedDate);
   const isLive = selectedDate === null;
 
+  const { availability, sourceSymbols, loading: availLoading } = useCandleAvailability("WIN");
+
   const { candles, loading, lastUpdate } = useContinuousCandles(
-    "WIN", timeframe, limit, isLive ? 5_000 : 0, dateFrom, dateTo
+    "WIN", timeframe, limit, isLive ? 5_000 : 0, dateFrom, dateTo, sourceSymbol
+  );
+
+  // Get availability info for current selection
+  const currentAvail = availability.filter(
+    (a) =>
+      a.timeframe === timeframe &&
+      (sourceSymbol ? a.source_symbol === sourceSymbol : true)
   );
 
   const chartData: CandleData[] = useMemo(
     () =>
       candles
         .filter((c) => {
-          // Filter out after-hours noise: candles where O=H=L=C (zero range) and very low volume
           const o = Number(c.open), h = Number(c.high), l = Number(c.low), cl = Number(c.close);
           if (o === h && h === l && l === cl && c.volume !== null && Number(c.volume) < 500) {
             return false;
@@ -50,7 +66,86 @@ export function CandleChartPanel() {
       <div className="px-4 py-2.5 border-b border-border bg-card flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <BarChart3 className="h-4 w-4 text-primary" />
-          <span className="font-mono text-sm font-bold text-foreground">WIN</span>
+
+          {/* Source Symbol Selector */}
+          <Popover open={showAvailability} onOpenChange={setShowAvailability}>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-1.5 font-mono text-sm font-bold text-foreground hover:text-primary transition-colors">
+                {sourceSymbol ?? "WIN (todos)"}
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="start">
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Database className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">Dados Disponíveis</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Selecione um contrato específico ou veja todos unificados.
+                </p>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto">
+                {/* All option */}
+                <button
+                  onClick={() => { setSourceSymbol(null); setShowAvailability(false); }}
+                  className={`w-full px-3 py-2 text-left text-xs font-mono flex items-center justify-between transition-colors ${
+                    sourceSymbol === null
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-secondary/50"
+                  }`}
+                >
+                  <span className="font-semibold">WIN (todos contratos)</span>
+                  <span className="text-muted-foreground">
+                    {availability.filter(a => a.timeframe === timeframe).reduce((s, a) => s + a.total, 0)} registros
+                  </span>
+                </button>
+
+                {/* Individual contracts */}
+                {sourceSymbols.map((sym) => {
+                  const symAvail = availability.filter(
+                    (a) => a.source_symbol === sym && a.timeframe === timeframe
+                  );
+                  const info = symAvail[0];
+
+                  return (
+                    <button
+                      key={sym}
+                      onClick={() => { setSourceSymbol(sym); setShowAvailability(false); }}
+                      className={`w-full px-3 py-2 text-left text-xs font-mono flex flex-col gap-0.5 transition-colors ${
+                        sourceSymbol === sym
+                          ? "bg-primary/10 text-primary"
+                          : "text-foreground hover:bg-secondary/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{sym}</span>
+                        {info ? (
+                          <span className="text-muted-foreground">{info.total} regs</span>
+                        ) : (
+                          <span className="text-muted-foreground/50">sem dados p/ {timeframe}</span>
+                        )}
+                      </div>
+                      {info && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(info.first_date).toLocaleDateString("pt-BR")} → {new Date(info.last_date).toLocaleDateString("pt-BR")}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {availLoading && (
+                <div className="p-3 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Carregando...
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+
           <span className="text-xs text-muted-foreground">•</span>
           <span className="font-mono text-xs text-primary font-semibold">{timeframe}</span>
           {lastCandle && (
@@ -70,10 +165,8 @@ export function CandleChartPanel() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Date navigator */}
           <DateNavigator selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
-          {/* Limit selector */}
           <div className="flex items-center gap-1 bg-secondary/50 rounded-sm p-0.5">
             {LIMITS.map((l) => (
               <button
@@ -90,7 +183,6 @@ export function CandleChartPanel() {
             ))}
           </div>
 
-          {/* Timeframe selector */}
           <div className="flex items-center gap-1 bg-secondary/50 rounded-sm p-0.5">
             {TIMEFRAMES.map((tf) => (
               <button
@@ -109,6 +201,20 @@ export function CandleChartPanel() {
         </div>
       </div>
 
+      {/* Data availability bar */}
+      {currentAvail.length > 0 && (
+        <div className="px-4 py-1 bg-secondary/20 border-b border-border flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
+          <Database className="h-3 w-3" />
+          <span>
+            Dados: {new Date(Math.min(...currentAvail.map(a => new Date(a.first_date).getTime()))).toLocaleDateString("pt-BR")}
+            {" → "}
+            {new Date(Math.max(...currentAvail.map(a => new Date(a.last_date).getTime()))).toLocaleDateString("pt-BR")}
+          </span>
+          <span>•</span>
+          <span>{currentAvail.reduce((s, a) => s + a.total, 0)} registros totais</span>
+        </div>
+      )}
+
       {/* Chart */}
       <div className="flex-1 min-h-0">
         {chartData.length > 0 ? (
@@ -121,13 +227,20 @@ export function CandleChartPanel() {
                 Carregando candles...
               </div>
             ) : (
-              "Nenhum dado disponível para WIN / " + timeframe + (selectedDate ? ` em ${selectedDate.toLocaleDateString("pt-BR")}` : "")
+              <div className="text-center">
+                <p>Nenhum dado disponível para {sourceSymbol ?? "WIN"} / {timeframe}</p>
+                {selectedDate && (
+                  <p className="text-xs mt-1">
+                    Data: {selectedDate.toLocaleDateString("pt-BR")} — tente outra data ou contrato
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Footer info */}
+      {/* Footer */}
       <div className="px-4 py-1.5 border-t border-border bg-card flex items-center justify-between text-xs text-muted-foreground">
         <span>{candles.length} candles carregados</span>
         {lastUpdate && (

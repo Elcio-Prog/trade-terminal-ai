@@ -46,7 +46,8 @@ export function useContinuousCandles(
   limit: number = 300,
   pollMs: number = 5_000,
   dateFrom?: string | null,
-  dateTo?: string | null
+  dateTo?: string | null,
+  sourceSymbol?: string | null
 ) {
   const [candles, setCandles] = useState<DBCandle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,7 @@ export function useContinuousCandles(
       .like("base_symbol", `${baseSymbol}%`)
       .eq("timeframe", timeframe);
 
+    if (sourceSymbol) query = query.eq("source_symbol", sourceSymbol);
     if (dateFrom) query = query.gte("ts_open", dateFrom);
     if (dateTo) query = query.lte("ts_open", dateTo);
 
@@ -74,7 +76,7 @@ export function useContinuousCandles(
       }
     }
     setLoading(false);
-  }, [baseSymbol, timeframe, limit, dateFrom, dateTo]);
+  }, [baseSymbol, timeframe, limit, dateFrom, dateTo, sourceSymbol]);
 
   useEffect(() => {
     setLoading(true);

@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useContinuousRenko } from "@/hooks/useMarketData";
+import { useRenkoAvailability } from "@/hooks/useDataAvailability";
 import { DateNavigator, dateToRange } from "@/components/dashboard/DateNavigator";
 import { createChart, CandlestickSeries, type IChartApi, type ISeriesApi, type CandlestickData, type Time } from "lightweight-charts";
-import { Blocks, Loader2 } from "lucide-react";
+import { Blocks, Loader2, Database, AlertTriangle } from "lucide-react";
 
 const BRICK_SIZES = [25, 50, 100];
 const LIMITS = [100, 300, 500];
@@ -18,6 +19,11 @@ export function RenkoChartPanel() {
   const { bricks, loading, lastUpdate } = useContinuousRenko(
     "WIN", "M1", brickSize, limit, isLive ? 5_000 : 0, dateFrom, dateTo
   );
+
+  const { availability, loading: availLoading } = useRenkoAvailability("WIN");
+
+  // Get availability for current brick size
+  const currentAvail = availability.find(a => a.brick_size === brickSize);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -94,7 +100,7 @@ export function RenkoChartPanel() {
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, []); // Create only once
+  }, []);
 
   // Update data separately
   useEffect(() => {
@@ -169,7 +175,38 @@ export function RenkoChartPanel() {
         </div>
       </div>
 
-      {/* Chart - always render the container */}
+      {/* Data availability bar */}
+      {!availLoading && (
+        <div className="px-4 py-1 bg-secondary/20 border-b border-border flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
+          <Database className="h-3 w-3" />
+          {currentAvail ? (
+            <>
+              <span>
+                Dados: {new Date(currentAvail.first_date).toLocaleDateString("pt-BR")}
+                {" → "}
+                {new Date(currentAvail.last_date).toLocaleDateString("pt-BR")}
+              </span>
+              <span>•</span>
+              <span>{currentAvail.total} bricks totais</span>
+            </>
+          ) : (
+            <span className="flex items-center gap-1 text-warning">
+              <AlertTriangle className="h-3 w-3" />
+              Nenhum dado Renko para brick size {brickSize}
+            </span>
+          )}
+          {availability.length > 0 && (
+            <>
+              <span>•</span>
+              <span>
+                Brick sizes disponíveis: {availability.map(a => `${a.brick_size}pts (${a.total})`).join(", ")}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Chart */}
       <div className="flex-1 min-h-0 relative">
         <div ref={containerRef} className="w-full h-full min-h-[200px]" />
         {chartData.length === 0 && (
@@ -180,7 +217,19 @@ export function RenkoChartPanel() {
                 Carregando bricks...
               </div>
             ) : (
-              "Nenhum dado disponível"
+              <div className="text-center">
+                <p>Nenhum dado Renko disponível</p>
+                {currentAvail && selectedDate && (
+                  <p className="text-xs mt-1">
+                    Dados disponíveis de {new Date(currentAvail.first_date).toLocaleDateString("pt-BR")} a {new Date(currentAvail.last_date).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+                {!currentAvail && (
+                  <p className="text-xs mt-1">
+                    Nenhum dado para brick size {brickSize} — tente outro tamanho
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
