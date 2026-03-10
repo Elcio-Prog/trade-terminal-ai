@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import type { DBCandle, DBRenko, DBBridgeAgent, Timeframe } from "@/types/trading";
 
 // ============================================================
-// Bridge Agent Status
+// Bridge Agent Status (with market hours awareness)
 // ============================================================
-export function useBridgeAgent(pollMs = 10_000) {
+export function useBridgeAgent(pollMs = 8_000) {
   const [agent, setAgent] = useState<DBBridgeAgent | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,19 +26,40 @@ export function useBridgeAgent(pollMs = 10_000) {
     return () => clearInterval(id);
   }, [fetchAgent, pollMs]);
 
-  const agentStatus = useCallback((): "online" | "offline" | "delayed" => {
-    if (!agent) return "offline";
+  const getStatus = useCallback((): "online" | "offline" | "delayed" | "awaiting" => {
+    // Check if we're inside market operational window (08:50 - 18:10 BRT, Mon-Fri)
+    const now = new Date();
+    const brt = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const day = brt.getDay();
+    const minutes = brt.getHours() * 60 + brt.getMinutes();
+    const marketOpen = 8 * 60 + 50;  // 08:50
+    const marketClose = 18 * 60 + 10; // 18:10
+    const isWeekday = day >= 1 && day <= 5;
+    const isMarketHours = isWeekday && minutes >= marketOpen && minutes <= marketClose;
+
+    if (!agent) {
+      return isMarketHours ? "offline" : "awaiting";
+    }
+
     const diff = Date.now() - new Date(agent.last_heartbeat_at).getTime();
+
+    if (!isMarketHours) {
+      // Outside market hours: if heartbeat is recent it's fine, otherwise awaiting
+      if (diff < 120_000) return "online";
+      return "awaiting";
+    }
+
+    // During market hours
     if (diff < 30_000) return "online";
     if (diff < 120_000) return "delayed";
     return "offline";
   }, [agent]);
 
-  return { agent, loading, status: agentStatus() };
+  return { agent, loading, status: getStatus() };
 }
 
 // ============================================================
-// Continuous Market Candles
+// Continuous Market Candles (continuous_market_candles)
 // ============================================================
 export function useContinuousCandles(
   baseSymbol: string,
@@ -46,8 +67,7 @@ export function useContinuousCandles(
   limit: number = 300,
   pollMs: number = 5_000,
   dateFrom?: string | null,
-  dateTo?: string | null,
-  sourceSymbol?: string | null
+  dateTo?: string | null
 ) {
   const [candles, setCandles] = useState<DBCandle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +80,6 @@ export function useContinuousCandles(
       .like("base_symbol", `${baseSymbol}%`)
       .eq("timeframe", timeframe);
 
-    if (sourceSymbol) query = query.eq("source_symbol", sourceSymbol);
     if (dateFrom) query = query.gte("ts_open", dateFrom);
     if (dateTo) query = query.lte("ts_open", dateTo);
 
@@ -71,12 +90,10 @@ export function useContinuousCandles(
     if (!error && data) {
       const rows = (data as unknown as DBCandle[]).reverse();
       setCandles(rows);
-      if (rows.length > 0) {
-        setLastUpdate(rows[rows.length - 1].ts_close);
-      }
+      if (rows.length > 0) setLastUpdate(rows[rows.length - 1].ts_close);
     }
     setLoading(false);
-  }, [baseSymbol, timeframe, limit, dateFrom, dateTo, sourceSymbol]);
+  }, [baseSymbol, timeframe, limit, dateFrom, dateTo]);
 
   useEffect(() => {
     setLoading(true);
@@ -88,6 +105,102 @@ export function useContinuousCandles(
   }, [fetchCandles, pollMs]);
 
   return { candles, loading, lastUpdate };
+}
+
+// ============================================================
+// Contract-specific Candles (market_candles via instrument)
+// ============================================================
+export interface DBMarketCandle {
+  id: string;
+  instrument_id: string;
+  timeframe: string;
+  ts_open: string;
+  ts_close: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+  vwap: number | null;
+  trade_count: number | null;
+  source: string;
+}
+
+export function useContractCandles(
+  instrumentId: string | null,
+  timeframe: Timeframe,
+  limit: number = 300,
+  pollMs: number = 5_000,
+  dateFrom?: string | null,
+  dateTo?: string | null
+) {
+  const [candles, setCandles] = useState<DBMarketCandle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+
+  const fetchCandles = useCallback(async () => {
+    if (!instrumentId) { setLoading(false); return; }
+
+    let query = supabase
+      .from("market_candles")
+      .select("*")
+      .eq("instrument_id", instrumentId)
+      .eq("timeframe", timeframe);
+
+    if (dateFrom) query = query.gte("ts_open", dateFrom);
+    if (dateTo) query = query.lte("ts_open", dateTo);
+
+    const { data, error } = await query
+      .order("ts_open", { ascending: false })
+      .limit(limit);
+
+    if (!error && data) {
+      const rows = (data as unknown as DBMarketCandle[]).reverse();
+      setCandles(rows);
+      if (rows.length > 0) setLastUpdate(rows[rows.length - 1].ts_close);
+    }
+    setLoading(false);
+  }, [instrumentId, timeframe, limit, dateFrom, dateTo]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchCandles();
+    if (pollMs > 0) {
+      const id = setInterval(fetchCandles, pollMs);
+      return () => clearInterval(id);
+    }
+  }, [fetchCandles, pollMs]);
+
+  return { candles, loading, lastUpdate };
+}
+
+// ============================================================
+// Available Instruments (for contract selector)
+// ============================================================
+export interface DBInstrument {
+  id: string;
+  symbol: string;
+  base_symbol: string;
+  is_active: boolean;
+}
+
+export function useInstruments(baseSymbol: string) {
+  const [instruments, setInstruments] = useState<DBInstrument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("instruments")
+        .select("id, symbol, base_symbol, is_active")
+        .like("base_symbol", `${baseSymbol}%`)
+        .order("symbol", { ascending: false });
+      if (data) setInstruments(data as unknown as DBInstrument[]);
+      setLoading(false);
+    })();
+  }, [baseSymbol]);
+
+  return { instruments, loading };
 }
 
 // ============================================================
@@ -124,9 +237,7 @@ export function useContinuousRenko(
     if (!error && data) {
       const rows = (data as unknown as DBRenko[]).reverse();
       setBricks(rows);
-      if (rows.length > 0) {
-        setLastUpdate(rows[rows.length - 1].ts_close);
-      }
+      if (rows.length > 0) setLastUpdate(rows[rows.length - 1].ts_close);
     }
     setLoading(false);
   }, [baseSymbol, sourceTimeframe, brickSize, limit, dateFrom, dateTo]);
@@ -141,76 +252,4 @@ export function useContinuousRenko(
   }, [fetchBricks, pollMs]);
 
   return { bricks, loading, lastUpdate };
-}
-
-// ============================================================
-// Market Summary (last price from M1)
-// ============================================================
-export function useMarketSummary(baseSymbol: string, pollMs = 5_000) {
-  const [lastPrice, setLastPrice] = useState<number | null>(null);
-  const [lastDirection, setLastDirection] = useState<"up" | "down" | null>(null);
-  const [lastCandleTime, setLastCandleTime] = useState<string | null>(null);
-
-  const fetchSummary = useCallback(async () => {
-    const { data } = await supabase
-      .from("continuous_market_candles")
-      .select("close, open, ts_close")
-      .like("base_symbol", `${baseSymbol}%`)
-      .eq("timeframe", "M1")
-      .order("ts_open", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (data) {
-      const row = data as unknown as { close: number; open: number; ts_close: string };
-      setLastPrice(row.close);
-      setLastDirection(row.close >= row.open ? "up" : "down");
-      setLastCandleTime(row.ts_close);
-    }
-  }, [baseSymbol]);
-
-  useEffect(() => {
-    fetchSummary();
-    const id = setInterval(fetchSummary, pollMs);
-    return () => clearInterval(id);
-  }, [fetchSummary, pollMs]);
-
-  return { lastPrice, lastDirection, lastCandleTime };
-}
-
-// ============================================================
-// Renko Direction Summary
-// ============================================================
-export function useRenkoSummary(
-  baseSymbol: string,
-  brickSize: number = 50,
-  count: number = 20,
-  pollMs: number = 10_000
-) {
-  const [upCount, setUpCount] = useState(0);
-  const [downCount, setDownCount] = useState(0);
-
-  const fetchSummary = useCallback(async () => {
-    const { data } = await supabase
-      .from("continuous_market_renko")
-      .select("direction")
-      .like("base_symbol", `${baseSymbol}%`)
-      .eq("brick_size", brickSize)
-      .order("brick_index", { ascending: false })
-      .limit(count);
-
-    if (data) {
-      const rows = data as unknown as { direction: string }[];
-      setUpCount(rows.filter((r) => r.direction === "up").length);
-      setDownCount(rows.filter((r) => r.direction === "down").length);
-    }
-  }, [baseSymbol, brickSize, count]);
-
-  useEffect(() => {
-    fetchSummary();
-    const id = setInterval(fetchSummary, pollMs);
-    return () => clearInterval(id);
-  }, [fetchSummary, pollMs]);
-
-  return { upCount, downCount, total: upCount + downCount };
 }
