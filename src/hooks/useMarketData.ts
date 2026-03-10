@@ -46,7 +46,8 @@ export function useContinuousCandles(
   limit: number = 300,
   pollMs: number = 5_000,
   dateFrom?: string | null,
-  dateTo?: string | null
+  dateTo?: string | null,
+  sourceSymbol?: string | null
 ) {
   const [candles, setCandles] = useState<DBCandle[]>([]);
   const [loading, setLoading] = useState(true);
