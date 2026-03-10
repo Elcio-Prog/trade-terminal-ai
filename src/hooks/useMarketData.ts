@@ -132,8 +132,10 @@ export function useContinuousRenko(
   useEffect(() => {
     setLoading(true);
     fetchBricks();
-    const id = setInterval(fetchBricks, pollMs);
-    return () => clearInterval(id);
+    if (pollMs > 0) {
+      const id = setInterval(fetchBricks, pollMs);
+      return () => clearInterval(id);
+    }
   }, [fetchBricks, pollMs]);
 
   return { bricks, loading, lastUpdate };
