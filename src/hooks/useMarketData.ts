@@ -60,6 +60,7 @@ export function useContinuousCandles(
       .like("base_symbol", `${baseSymbol}%`)
       .eq("timeframe", timeframe);
 
+    if (sourceSymbol) query = query.eq("source_symbol", sourceSymbol);
     if (dateFrom) query = query.gte("ts_open", dateFrom);
     if (dateTo) query = query.lte("ts_open", dateTo);
 
