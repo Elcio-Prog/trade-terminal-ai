@@ -473,6 +473,63 @@ export type Database = {
           },
         ]
       }
+      continuous_market_renko: {
+        Row: {
+          base_symbol: string
+          brick_index: number | null
+          brick_size: number
+          close: number
+          created_at: string
+          direction: string
+          high: number
+          id: string
+          low: number
+          open: number
+          source_close_ts: string | null
+          source_open_ts: string | null
+          source_row_count: number | null
+          source_timeframe: string
+          ts_close: string
+          ts_open: string
+        }
+        Insert: {
+          base_symbol: string
+          brick_index?: number | null
+          brick_size: number
+          close: number
+          created_at?: string
+          direction: string
+          high: number
+          id?: string
+          low: number
+          open: number
+          source_close_ts?: string | null
+          source_open_ts?: string | null
+          source_row_count?: number | null
+          source_timeframe?: string
+          ts_close: string
+          ts_open: string
+        }
+        Update: {
+          base_symbol?: string
+          brick_index?: number | null
+          brick_size?: number
+          close?: number
+          created_at?: string
+          direction?: string
+          high?: number
+          id?: string
+          low?: number
+          open?: number
+          source_close_ts?: string | null
+          source_open_ts?: string | null
+          source_row_count?: number | null
+          source_timeframe?: string
+          ts_close?: string
+          ts_open?: string
+        }
+        Relationships: []
+      }
       execution_commands: {
         Row: {
           acknowledged_at: string | null
