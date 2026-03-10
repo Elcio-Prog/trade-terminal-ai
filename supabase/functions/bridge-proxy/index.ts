@@ -63,7 +63,7 @@ serve(async (req) => {
       }
     }
 
-    const { table, operation, data, filters, on_conflict } = await req.json();
+    const { table, operation, data, filters, on_conflict, limit, offset, order_by } = await req.json();
 
     // Validate table
     if (!table || !ALLOWED_TABLES.has(table)) {
@@ -116,12 +116,30 @@ serve(async (req) => {
         break;
       }
       case "select": {
-        let query = supabase.from(table).select("*");
+        let query = supabase.from(table).select("*", { count: "exact" });
+
+        // Apply filters
         if (filters) {
           for (const [key, value] of Object.entries(filters)) {
             query = query.eq(key, value as string);
           }
         }
+
+        // Apply ordering: accepts array like ["ts_open.asc", "id.desc"]
+        if (order_by && Array.isArray(order_by)) {
+          for (const clause of order_by) {
+            const parts = (clause as string).split(".");
+            const column = parts[0];
+            const ascending = parts[1] !== "desc";
+            query = query.order(column, { ascending });
+          }
+        }
+
+        // Apply pagination via range (offset-based)
+        const pageLimit = typeof limit === "number" ? limit : 1000;
+        const pageOffset = typeof offset === "number" ? offset : 0;
+        query = query.range(pageOffset, pageOffset + pageLimit - 1);
+
         result = await query;
         break;
       }
