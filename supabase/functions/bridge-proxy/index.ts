@@ -27,6 +27,7 @@ const ALLOWED_TABLES = new Set([
   "instruments",
   "market_sessions",
   "continuous_market_candles",
+  "continuous_market_renko",
 ]);
 
 // Allowed operations
