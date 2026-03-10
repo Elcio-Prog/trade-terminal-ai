@@ -9,22 +9,22 @@ export function useBridgeAgent(pollMs = 10_000) {
   const [agent, setAgent] = useState<DBBridgeAgent | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetch = useCallback(async () => {
+  const fetchAgent = useCallback(async () => {
     const { data } = await supabase
       .from("bridge_agents")
       .select("*")
       .order("last_heartbeat_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
     if (data) setAgent(data as unknown as DBBridgeAgent);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetch();
-    const id = setInterval(fetch, pollMs);
+    fetchAgent();
+    const id = setInterval(fetchAgent, pollMs);
     return () => clearInterval(id);
-  }, [fetch, pollMs]);
+  }, [fetchAgent, pollMs]);
 
   const agentStatus = useCallback((): "online" | "offline" | "delayed" => {
     if (!agent) return "offline";
@@ -56,7 +56,7 @@ export function useContinuousCandles(
     let query = supabase
       .from("continuous_market_candles")
       .select("*")
-      .eq("base_symbol", baseSymbol)
+      .like("base_symbol", `${baseSymbol}%`)
       .eq("timeframe", timeframe);
 
     if (dateFrom) query = query.gte("ts_open", dateFrom);
@@ -108,7 +108,7 @@ export function useContinuousRenko(
     let query = supabase
       .from("continuous_market_renko")
       .select("*")
-      .eq("base_symbol", baseSymbol)
+      .like("base_symbol", `${baseSymbol}%`)
       .eq("source_timeframe", sourceTimeframe)
       .eq("brick_size", brickSize);
 
@@ -153,11 +153,11 @@ export function useMarketSummary(baseSymbol: string, pollMs = 5_000) {
     const { data } = await supabase
       .from("continuous_market_candles")
       .select("close, open, ts_close")
-      .eq("base_symbol", baseSymbol)
+      .like("base_symbol", `${baseSymbol}%`)
       .eq("timeframe", "M1")
       .order("ts_open", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (data) {
       const row = data as unknown as { close: number; open: number; ts_close: string };
@@ -192,7 +192,7 @@ export function useRenkoSummary(
     const { data } = await supabase
       .from("continuous_market_renko")
       .select("direction")
-      .eq("base_symbol", baseSymbol)
+      .like("base_symbol", `${baseSymbol}%`)
       .eq("brick_size", brickSize)
       .order("brick_index", { ascending: false })
       .limit(count);
