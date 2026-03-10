@@ -29,6 +29,7 @@ const ALLOWED_TABLES = new Set([
   "continuous_market_candles",
   "continuous_market_renko",
   "continuous_feature_vectors",
+  "continuous_renko_feature_vectors",
 ]);
 
 // Allowed operations

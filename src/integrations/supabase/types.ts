@@ -620,6 +620,90 @@ export type Database = {
         }
         Relationships: []
       }
+      continuous_renko_feature_vectors: {
+        Row: {
+          base_symbol: string
+          brick_return_1: number | null
+          brick_return_3: number | null
+          brick_return_5: number | null
+          brick_size: number
+          close_vs_ma_10: number | null
+          close_vs_ma_5: number | null
+          created_at: string
+          dir_value: number
+          direction: string
+          down_count_10: number | null
+          down_count_5: number | null
+          feature_set_version: string
+          id: string
+          net_move_10: number | null
+          net_move_3: number | null
+          net_move_5: number | null
+          reversal_flag: boolean | null
+          same_dir_seq_count: number | null
+          source_features_json: Json | null
+          source_row_id: string | null
+          source_timeframe: string
+          ts_reference: string
+          up_count_10: number | null
+          up_count_5: number | null
+        }
+        Insert: {
+          base_symbol: string
+          brick_return_1?: number | null
+          brick_return_3?: number | null
+          brick_return_5?: number | null
+          brick_size: number
+          close_vs_ma_10?: number | null
+          close_vs_ma_5?: number | null
+          created_at?: string
+          dir_value: number
+          direction: string
+          down_count_10?: number | null
+          down_count_5?: number | null
+          feature_set_version?: string
+          id?: string
+          net_move_10?: number | null
+          net_move_3?: number | null
+          net_move_5?: number | null
+          reversal_flag?: boolean | null
+          same_dir_seq_count?: number | null
+          source_features_json?: Json | null
+          source_row_id?: string | null
+          source_timeframe?: string
+          ts_reference: string
+          up_count_10?: number | null
+          up_count_5?: number | null
+        }
+        Update: {
+          base_symbol?: string
+          brick_return_1?: number | null
+          brick_return_3?: number | null
+          brick_return_5?: number | null
+          brick_size?: number
+          close_vs_ma_10?: number | null
+          close_vs_ma_5?: number | null
+          created_at?: string
+          dir_value?: number
+          direction?: string
+          down_count_10?: number | null
+          down_count_5?: number | null
+          feature_set_version?: string
+          id?: string
+          net_move_10?: number | null
+          net_move_3?: number | null
+          net_move_5?: number | null
+          reversal_flag?: boolean | null
+          same_dir_seq_count?: number | null
+          source_features_json?: Json | null
+          source_row_id?: string | null
+          source_timeframe?: string
+          ts_reference?: string
+          up_count_10?: number | null
+          up_count_5?: number | null
+        }
+        Relationships: []
+      }
       execution_commands: {
         Row: {
           acknowledged_at: string | null
