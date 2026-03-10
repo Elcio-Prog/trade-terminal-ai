@@ -76,7 +76,7 @@ export function useContinuousCandles(
       }
     }
     setLoading(false);
-  }, [baseSymbol, timeframe, limit, dateFrom, dateTo]);
+  }, [baseSymbol, timeframe, limit, dateFrom, dateTo, sourceSymbol]);
 
   useEffect(() => {
     setLoading(true);
