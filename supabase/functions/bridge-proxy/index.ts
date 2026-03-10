@@ -26,6 +26,7 @@ const ALLOWED_TABLES = new Set([
   "system_events",
   "instruments",
   "market_sessions",
+  "continuous_market_candles",
 ]);
 
 // Allowed operations
