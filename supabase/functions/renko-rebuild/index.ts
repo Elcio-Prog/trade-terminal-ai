@@ -54,7 +54,7 @@ function buildCloseOnlyRenko(candles: Candle[], brickSize: number, baseSymbol: s
     if (absDiff < brickSize) continue;
 
     const numBricks = Math.floor(absDiff / brickSize);
-    const direction = diff > 0 ? "UP" : "DOWN";
+    const direction = diff > 0 ? "up" : "down";
     const step = direction === "UP" ? brickSize : -brickSize;
 
     for (let b = 0; b < numBricks; b++) {
