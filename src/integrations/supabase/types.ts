@@ -1230,6 +1230,177 @@ export type Database = {
           },
         ]
       }
+      ml_training_data: {
+        Row: {
+          adx: number | null
+          atr: number | null
+          base_symbol: string
+          body: number | null
+          close: number | null
+          created_at: string
+          distance_vwap_pct: number | null
+          distance_vwap_points: number | null
+          ema200: number | null
+          ema21: number | null
+          ema9: number | null
+          future_return_10: number | null
+          future_return_3: number | null
+          future_return_5: number | null
+          high: number | null
+          id: number
+          liquidity_zone_center: number | null
+          liquidity_zone_distance: number | null
+          liquidity_zone_id: number | null
+          liquidity_zone_strength: number | null
+          low: number | null
+          lower_wick: number | null
+          macd: number | null
+          macd_hist: number | null
+          macd_signal: number | null
+          open: number | null
+          order_flow_imbalance: number | null
+          price: number | null
+          range: number | null
+          regime_label: string | null
+          relative_volume: number | null
+          renko_brick_size: number | null
+          renko_dir: number | null
+          renko_streak: number | null
+          return_1: number | null
+          return_3: number | null
+          return_5: number | null
+          rsi: number | null
+          source_id: number | null
+          source_type: string
+          target_binary: number | null
+          target_class: number | null
+          timeframe: string
+          ts_ref: string
+          upper_wick: number | null
+          volume: number | null
+          volume_delta: number | null
+          volume_mean: number | null
+          vwap: number | null
+          vwap_lower_1: number | null
+          vwap_lower_2: number | null
+          vwap_std: number | null
+          vwap_upper_1: number | null
+          vwap_upper_2: number | null
+        }
+        Insert: {
+          adx?: number | null
+          atr?: number | null
+          base_symbol: string
+          body?: number | null
+          close?: number | null
+          created_at?: string
+          distance_vwap_pct?: number | null
+          distance_vwap_points?: number | null
+          ema200?: number | null
+          ema21?: number | null
+          ema9?: number | null
+          future_return_10?: number | null
+          future_return_3?: number | null
+          future_return_5?: number | null
+          high?: number | null
+          id?: number
+          liquidity_zone_center?: number | null
+          liquidity_zone_distance?: number | null
+          liquidity_zone_id?: number | null
+          liquidity_zone_strength?: number | null
+          low?: number | null
+          lower_wick?: number | null
+          macd?: number | null
+          macd_hist?: number | null
+          macd_signal?: number | null
+          open?: number | null
+          order_flow_imbalance?: number | null
+          price?: number | null
+          range?: number | null
+          regime_label?: string | null
+          relative_volume?: number | null
+          renko_brick_size?: number | null
+          renko_dir?: number | null
+          renko_streak?: number | null
+          return_1?: number | null
+          return_3?: number | null
+          return_5?: number | null
+          rsi?: number | null
+          source_id?: number | null
+          source_type?: string
+          target_binary?: number | null
+          target_class?: number | null
+          timeframe?: string
+          ts_ref: string
+          upper_wick?: number | null
+          volume?: number | null
+          volume_delta?: number | null
+          volume_mean?: number | null
+          vwap?: number | null
+          vwap_lower_1?: number | null
+          vwap_lower_2?: number | null
+          vwap_std?: number | null
+          vwap_upper_1?: number | null
+          vwap_upper_2?: number | null
+        }
+        Update: {
+          adx?: number | null
+          atr?: number | null
+          base_symbol?: string
+          body?: number | null
+          close?: number | null
+          created_at?: string
+          distance_vwap_pct?: number | null
+          distance_vwap_points?: number | null
+          ema200?: number | null
+          ema21?: number | null
+          ema9?: number | null
+          future_return_10?: number | null
+          future_return_3?: number | null
+          future_return_5?: number | null
+          high?: number | null
+          id?: number
+          liquidity_zone_center?: number | null
+          liquidity_zone_distance?: number | null
+          liquidity_zone_id?: number | null
+          liquidity_zone_strength?: number | null
+          low?: number | null
+          lower_wick?: number | null
+          macd?: number | null
+          macd_hist?: number | null
+          macd_signal?: number | null
+          open?: number | null
+          order_flow_imbalance?: number | null
+          price?: number | null
+          range?: number | null
+          regime_label?: string | null
+          relative_volume?: number | null
+          renko_brick_size?: number | null
+          renko_dir?: number | null
+          renko_streak?: number | null
+          return_1?: number | null
+          return_3?: number | null
+          return_5?: number | null
+          rsi?: number | null
+          source_id?: number | null
+          source_type?: string
+          target_binary?: number | null
+          target_class?: number | null
+          timeframe?: string
+          ts_ref?: string
+          upper_wick?: number | null
+          volume?: number | null
+          volume_delta?: number | null
+          volume_mean?: number | null
+          vwap?: number | null
+          vwap_lower_1?: number | null
+          vwap_lower_2?: number | null
+          vwap_std?: number | null
+          vwap_upper_1?: number | null
+          vwap_upper_2?: number | null
+        }
+        Relationships: []
+      }
       position_snapshots: {
         Row: {
           avg_price: number | null
