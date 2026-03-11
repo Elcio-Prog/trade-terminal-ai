@@ -30,6 +30,7 @@ const ALLOWED_TABLES = new Set([
   "continuous_market_renko",
   "continuous_feature_vectors",
   "continuous_renko_feature_vectors",
+  "ml_training_data",
 ]);
 
 // Allowed operations
