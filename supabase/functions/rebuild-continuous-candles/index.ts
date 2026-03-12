@@ -8,17 +8,14 @@ const corsHeaders = {
 
 /**
  * rebuild-continuous-candles v2
- * 
- * Rebuilds continuous_market_candles using the best contract per day.
- * Selection: most candles > most volume > nearest expiry (symbol ASC).
- * 
- * Optimized: processes one day at a time via resume to avoid timeouts.
+ * Processes multiple days per call with timeout awareness.
  * 
  * Body params:
  *   base_symbol: string (default "WIN")
  *   timeframe: string (default "M1")
- *   day_date: string (YYYY-MM-DD) - specific day to process
- *   mode: "list_days" | "process_day" | "delete_all"
+ *   mode: "delete_all" | "rebuild"
+ *   day_offset: number (default 0)
+ *   days_per_call: number (default 10)
  */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -33,159 +30,110 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const baseSymbol: string = body.base_symbol || "WIN";
     const timeframe: string = body.timeframe || "M1";
-    const mode: string = body.mode || "process_day";
-    const dayDate: string = body.day_date || "";
+    const mode: string = body.mode || "rebuild";
+    const dayOffset: number = body.day_offset || 0;
+    const daysPerCall: number = body.days_per_call || 10;
 
-    // MODE: delete_all - clear existing data
     if (mode === "delete_all") {
-      await supabase
-        .from("continuous_market_candles")
-        .delete()
-        .eq("base_symbol", baseSymbol)
-        .eq("timeframe", timeframe);
-      return new Response(JSON.stringify({ success: true, action: "deleted", base_symbol: baseSymbol, timeframe }), {
+      await supabase.from("continuous_market_candles").delete()
+        .eq("base_symbol", baseSymbol).eq("timeframe", timeframe);
+      return new Response(JSON.stringify({ success: true, action: "deleted" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get instruments for this base_symbol
-    const { data: instruments, error: instErr } = await supabase
-      .from("instruments")
-      .select("id, symbol")
-      .like("base_symbol", `${baseSymbol}%`);
+    // Get instruments
+    const { data: instruments } = await supabase.from("instruments")
+      .select("id, symbol").like("base_symbol", `${baseSymbol}%`);
+    if (!instruments?.length) throw new Error("No instruments");
 
-    if (instErr || !instruments?.length) {
-      return new Response(JSON.stringify({ error: "No instruments found" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Get date range from market_candles
+    const { data: minR } = await supabase.from("market_candles").select("ts_open")
+      .in("instrument_id", instruments.map(i => i.id)).eq("timeframe", timeframe)
+      .order("ts_open", { ascending: true }).limit(1);
+    const { data: maxR } = await supabase.from("market_candles").select("ts_open")
+      .in("instrument_id", instruments.map(i => i.id)).eq("timeframe", timeframe)
+      .order("ts_open", { ascending: false }).limit(1);
+
+    if (!minR?.length || !maxR?.length) throw new Error("No data");
+
+    // Build day list
+    const allDays: string[] = [];
+    const d = new Date(minR[0].ts_open); d.setUTCHours(0, 0, 0, 0);
+    const maxD = new Date(maxR[0].ts_open);
+    while (d <= maxD) {
+      allDays.push(d.toISOString().split('T')[0]);
+      d.setUTCDate(d.getUTCDate() + 1);
     }
-    const instrumentIds = instruments.map(i => i.id);
 
-    // MODE: list_days - return all distinct days that have data
-    if (mode === "list_days") {
-      // Get min/max date range
-      const { data: minRow } = await supabase
-        .from("market_candles").select("ts_open")
-        .in("instrument_id", instrumentIds).eq("timeframe", timeframe)
-        .order("ts_open", { ascending: true }).limit(1);
-      const { data: maxRow } = await supabase
-        .from("market_candles").select("ts_open")
-        .in("instrument_id", instrumentIds).eq("timeframe", timeframe)
-        .order("ts_open", { ascending: false }).limit(1);
-
-      if (!minRow?.length || !maxRow?.length) {
-        return new Response(JSON.stringify({ days: [], total: 0 }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const minDate = new Date(minRow[0].ts_open);
-      const maxDate = new Date(maxRow[0].ts_open);
-      const days: string[] = [];
-      const d = new Date(minDate);
-      d.setUTCHours(0, 0, 0, 0);
-      while (d <= maxDate) {
-        days.push(d.toISOString().split('T')[0]);
-        d.setUTCDate(d.getUTCDate() + 1);
-      }
-
-      return new Response(JSON.stringify({ days, total: days.length, min: minRow[0].ts_open, max: maxRow[0].ts_open }), {
+    const daysSlice = allDays.slice(dayOffset, dayOffset + daysPerCall);
+    if (!daysSlice.length) {
+      return new Response(JSON.stringify({ success: true, done: true, total_days: allDays.length }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // MODE: process_day - process a single day
-    if (!dayDate) {
-      return new Response(JSON.stringify({ error: "day_date required for process_day mode" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const startTime = Date.now();
+    const stats: any[] = [];
+    let totalInserted = 0;
+    let daysActuallyProcessed = 0;
 
-    const dayStart = `${dayDate}T00:00:00+00`;
-    const dayEnd = `${dayDate}T23:59:59.999+00`;
+    for (const day of daysSlice) {
+      // Timeout guard: stop if >45s elapsed
+      if (Date.now() - startTime > 45000) break;
 
-    // Delete existing for this day
-    await supabase
-      .from("continuous_market_candles")
-      .delete()
-      .eq("base_symbol", baseSymbol)
-      .eq("timeframe", timeframe)
-      .gte("ts_open", dayStart)
-      .lte("ts_open", dayEnd);
+      const dayStart = `${day}T00:00:00+00`;
+      const dayEnd = `${day}T23:59:59.999+00`;
 
-    // Find best contract: count candles per instrument
-    const candidates: { id: string; symbol: string; count: number }[] = [];
-    
-    for (const inst of instruments) {
-      const { count } = await supabase
-        .from("market_candles")
-        .select("*", { count: "exact", head: true })
-        .eq("instrument_id", inst.id)
-        .eq("timeframe", timeframe)
-        .gte("ts_open", dayStart)
-        .lte("ts_open", dayEnd);
-
-      if (count && count > 0) {
-        candidates.push({ id: inst.id, symbol: inst.symbol, count });
+      // Find best contract via count per instrument
+      let bestId = "", bestSymbol = "", bestCount = 0;
+      for (const inst of instruments) {
+        const { count } = await supabase.from("market_candles")
+          .select("*", { count: "exact", head: true })
+          .eq("instrument_id", inst.id).eq("timeframe", timeframe)
+          .gte("ts_open", dayStart).lte("ts_open", dayEnd);
+        if (count && count > bestCount) {
+          bestCount = count; bestId = inst.id; bestSymbol = inst.symbol;
+        } else if (count && count === bestCount && inst.symbol < bestSymbol) {
+          bestId = inst.id; bestSymbol = inst.symbol;
+        }
       }
+
+      if (bestCount === 0) { daysActuallyProcessed++; continue; }
+
+      // Fetch candles for best contract
+      const { data: candles } = await supabase.from("market_candles")
+        .select("*").eq("instrument_id", bestId).eq("timeframe", timeframe)
+        .gte("ts_open", dayStart).lte("ts_open", dayEnd)
+        .order("ts_open", { ascending: true }).limit(1000);
+
+      if (!candles?.length) { daysActuallyProcessed++; continue; }
+
+      const rows = candles.map(c => ({
+        base_symbol: baseSymbol, source_symbol: bestSymbol,
+        source_instrument_id: bestId, timeframe,
+        ts_open: c.ts_open, ts_close: c.ts_close,
+        open: c.open, high: c.high, low: c.low, close: c.close,
+        volume: c.volume, vwap: c.vwap, trade_count: c.trade_count,
+        roll_method: "max_liquidity_v2",
+      }));
+
+      const { error: insErr } = await supabase.from("continuous_market_candles").insert(rows);
+      if (insErr) throw new Error(`Insert ${day}: ${insErr.message}`);
+
+      totalInserted += rows.length;
+      stats.push({ d: day, s: bestSymbol, n: rows.length });
+      daysActuallyProcessed++;
     }
 
-    if (candidates.length === 0) {
-      return new Response(JSON.stringify({ success: true, day: dayDate, skipped: true, reason: "no_data" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Sort: most candles, then symbol ASC (nearest expiry)
-    candidates.sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count;
-      return a.symbol.localeCompare(b.symbol);
-    });
-
-    const best = candidates[0];
-
-    // Fetch all candles for the winning contract
-    let allCandles: any[] = [];
-    let offset = 0;
-    const PAGE = 1000;
-    while (true) {
-      const { data, error } = await supabase
-        .from("market_candles")
-        .select("*")
-        .eq("instrument_id", best.id)
-        .eq("timeframe", timeframe)
-        .gte("ts_open", dayStart)
-        .lte("ts_open", dayEnd)
-        .order("ts_open", { ascending: true })
-        .range(offset, offset + PAGE - 1);
-      if (error) throw new Error(error.message);
-      if (!data?.length) break;
-      allCandles = allCandles.concat(data);
-      if (data.length < PAGE) break;
-      offset += PAGE;
-    }
-
-    // Insert as continuous
-    const rows = allCandles.map(c => ({
-      base_symbol: baseSymbol,
-      source_symbol: best.symbol,
-      source_instrument_id: best.id,
-      timeframe,
-      ts_open: c.ts_open,
-      ts_close: c.ts_close,
-      open: c.open, high: c.high, low: c.low, close: c.close,
-      volume: c.volume, vwap: c.vwap, trade_count: c.trade_count,
-      roll_method: "max_liquidity_v2",
-    }));
-
-    for (let i = 0; i < rows.length; i += 1000) {
-      const { error: insErr } = await supabase.from("continuous_market_candles").insert(rows.slice(i, i + 1000));
-      if (insErr) throw new Error(`Insert: ${insErr.message}`);
-    }
+    const hasMore = (dayOffset + daysActuallyProcessed) < allDays.length;
 
     return new Response(JSON.stringify({
-      success: true, day: dayDate, symbol: best.symbol, count: rows.length,
-      candidates: candidates.map(c => ({ symbol: c.symbol, count: c.count })),
+      success: true, timeframe, days_processed: daysActuallyProcessed,
+      candles_inserted: totalInserted, has_more: hasMore,
+      next_offset: dayOffset + daysActuallyProcessed,
+      total_days: allDays.length, stats,
+      elapsed_ms: Date.now() - startTime,
     }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
