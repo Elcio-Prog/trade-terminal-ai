@@ -12,10 +12,12 @@ serve(async (req) => {
   }
 
   try {
+    // Auth check - allow service role Bearer token or bridge secret
     const authHeader = req.headers.get("Authorization");
     const bridgeSecret = req.headers.get("x-bridge-secret");
     const expectedSecret = Deno.env.get("BRIDGE_SECRET");
-    if (expectedSecret && bridgeSecret !== expectedSecret && !authHeader?.startsWith("Bearer ")) {
+    const hasValidAuth = authHeader?.startsWith("Bearer ") || (expectedSecret && bridgeSecret === expectedSecret) || !expectedSecret;
+    if (!hasValidAuth) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
