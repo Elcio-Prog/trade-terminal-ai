@@ -6,25 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-bridge-secret",
 };
 
-/**
- * rebuild-continuous-candles v2
- * Processes multiple days per call with timeout awareness.
- * 
- * Body params:
- *   base_symbol: string (default "WIN")
- *   timeframe: string (default "M1")
- *   mode: "delete_all" | "rebuild"
- *   day_offset: number (default 0)
- *   days_per_call: number (default 10)
- */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const dbUrl = Deno.env.get("SUPABASE_DB_URL")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json().catch(() => ({}));
@@ -32,14 +21,12 @@ serve(async (req) => {
     const timeframe: string = body.timeframe || "M1";
     const mode: string = body.mode || "rebuild";
     const dayOffset: number = body.day_offset || 0;
-    const daysPerCall: number = body.days_per_call || 10;
+    const daysPerCall: number = body.days_per_call || 5;
 
     if (mode === "delete_all") {
       await supabase.from("continuous_market_candles").delete()
         .eq("base_symbol", baseSymbol).eq("timeframe", timeframe);
-      return new Response(JSON.stringify({ success: true, action: "deleted" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return respond({ success: true, action: "deleted" });
     }
 
     // Get instruments
@@ -47,17 +34,16 @@ serve(async (req) => {
       .select("id, symbol").like("base_symbol", `${baseSymbol}%`);
     if (!instruments?.length) throw new Error("No instruments");
 
-    // Get date range from market_candles
+    // Instead of querying per instrument per day, query ALL candles for a day range
+    // and group in code
     const { data: minR } = await supabase.from("market_candles").select("ts_open")
       .in("instrument_id", instruments.map(i => i.id)).eq("timeframe", timeframe)
       .order("ts_open", { ascending: true }).limit(1);
     const { data: maxR } = await supabase.from("market_candles").select("ts_open")
       .in("instrument_id", instruments.map(i => i.id)).eq("timeframe", timeframe)
       .order("ts_open", { ascending: false }).limit(1);
-
     if (!minR?.length || !maxR?.length) throw new Error("No data");
 
-    // Build day list
     const allDays: string[] = [];
     const d = new Date(minR[0].ts_open); d.setUTCHours(0, 0, 0, 0);
     const maxD = new Date(maxR[0].ts_open);
@@ -68,48 +54,60 @@ serve(async (req) => {
 
     const daysSlice = allDays.slice(dayOffset, dayOffset + daysPerCall);
     if (!daysSlice.length) {
-      return new Response(JSON.stringify({ success: true, done: true, total_days: allDays.length }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return respond({ success: true, done: true, total_days: allDays.length });
     }
 
-    const startTime = Date.now();
+    const instMap = new Map(instruments.map(i => [i.id, i.symbol]));
     const stats: any[] = [];
     let totalInserted = 0;
-    let daysActuallyProcessed = 0;
 
+    // Process each day individually - one query per day to get ALL instrument data
     for (const day of daysSlice) {
-      // Timeout guard: stop if >45s elapsed
-      if (Date.now() - startTime > 45000) break;
-
       const dayStart = `${day}T00:00:00+00`;
       const dayEnd = `${day}T23:59:59.999+00`;
 
-      // Find best contract via count per instrument
-      let bestId = "", bestSymbol = "", bestCount = 0;
-      for (const inst of instruments) {
-        const { count } = await supabase.from("market_candles")
-          .select("*", { count: "exact", head: true })
-          .eq("instrument_id", inst.id).eq("timeframe", timeframe)
-          .gte("ts_open", dayStart).lte("ts_open", dayEnd);
-        if (count && count > bestCount) {
-          bestCount = count; bestId = inst.id; bestSymbol = inst.symbol;
-        } else if (count && count === bestCount && inst.symbol < bestSymbol) {
-          bestId = inst.id; bestSymbol = inst.symbol;
+      // Fetch ALL candles for ALL instruments for this day (up to 1000)
+      // This is much faster than N queries per instrument
+      let allCandles: any[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase.from("market_candles")
+          .select("*")
+          .in("instrument_id", instruments.map(i => i.id))
+          .eq("timeframe", timeframe)
+          .gte("ts_open", dayStart).lte("ts_open", dayEnd)
+          .order("ts_open", { ascending: true })
+          .range(offset, offset + 999);
+        if (error) throw new Error(error.message);
+        if (!data?.length) break;
+        allCandles = allCandles.concat(data);
+        if (data.length < 1000) break;
+        offset += 1000;
+      }
+
+      if (!allCandles.length) continue;
+
+      // Group by instrument and count
+      const countByInst = new Map<string, number>();
+      for (const c of allCandles) {
+        countByInst.set(c.instrument_id, (countByInst.get(c.instrument_id) || 0) + 1);
+      }
+
+      // Find best: most candles, then symbol ASC
+      let bestId = "", bestCount = 0, bestSymbol = "ZZZZ";
+      for (const [instId, cnt] of countByInst) {
+        const sym = instMap.get(instId) || "ZZZZ";
+        if (cnt > bestCount || (cnt === bestCount && sym < bestSymbol)) {
+          bestId = instId; bestCount = cnt; bestSymbol = sym;
         }
       }
 
-      if (bestCount === 0) { daysActuallyProcessed++; continue; }
+      // Filter candles for the best instrument
+      const bestCandles = allCandles
+        .filter(c => c.instrument_id === bestId)
+        .sort((a, b) => a.ts_open.localeCompare(b.ts_open));
 
-      // Fetch candles for best contract
-      const { data: candles } = await supabase.from("market_candles")
-        .select("*").eq("instrument_id", bestId).eq("timeframe", timeframe)
-        .gte("ts_open", dayStart).lte("ts_open", dayEnd)
-        .order("ts_open", { ascending: true }).limit(1000);
-
-      if (!candles?.length) { daysActuallyProcessed++; continue; }
-
-      const rows = candles.map(c => ({
+      const rows = bestCandles.map(c => ({
         base_symbol: baseSymbol, source_symbol: bestSymbol,
         source_instrument_id: bestId, timeframe,
         ts_open: c.ts_open, ts_close: c.ts_close,
@@ -118,30 +116,33 @@ serve(async (req) => {
         roll_method: "max_liquidity_v2",
       }));
 
-      const { error: insErr } = await supabase.from("continuous_market_candles").insert(rows);
-      if (insErr) throw new Error(`Insert ${day}: ${insErr.message}`);
+      // Insert
+      for (let i = 0; i < rows.length; i += 1000) {
+        const { error: insErr } = await supabase.from("continuous_market_candles").insert(rows.slice(i, i + 1000));
+        if (insErr) throw new Error(`Insert ${day}: ${insErr.message}`);
+      }
 
       totalInserted += rows.length;
       stats.push({ d: day, s: bestSymbol, n: rows.length });
-      daysActuallyProcessed++;
     }
 
-    const hasMore = (dayOffset + daysActuallyProcessed) < allDays.length;
+    const nextOffset = dayOffset + daysSlice.length;
+    const hasMore = nextOffset < allDays.length;
 
-    return new Response(JSON.stringify({
-      success: true, timeframe, days_processed: daysActuallyProcessed,
+    return respond({
+      success: true, timeframe, days_processed: daysSlice.length,
       candles_inserted: totalInserted, has_more: hasMore,
-      next_offset: dayOffset + daysActuallyProcessed,
-      total_days: allDays.length, stats,
-      elapsed_ms: Date.now() - startTime,
-    }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      next_offset: nextOffset, total_days: allDays.length, stats,
     });
 
   } catch (e) {
     console.error("[rebuild-continuous] Error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return respond({ error: e instanceof Error ? e.message : "Unknown" }, 500);
+  }
+
+  function respond(data: any, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
