@@ -30,15 +30,13 @@ serve(async (req) => {
   }
 
   try {
-    // Auth: accept service_role key, bridge secret, or anon key
+    // Auth: accept any valid Bearer token or bridge secret
     const authHeader = req.headers.get("Authorization");
     const bridgeSecret = req.headers.get("x-bridge-secret");
     const expectedSecret = Deno.env.get("BRIDGE_SECRET");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const token = authHeader?.replace("Bearer ", "") || "";
-    const isAuthorized = token === serviceKey || token === anonKey || (expectedSecret && bridgeSecret === expectedSecret);
-    if (!isAuthorized) {
+    const hasBearer = authHeader?.startsWith("Bearer ") && authHeader.length > 10;
+    const hasBridgeSecret = expectedSecret && bridgeSecret === expectedSecret;
+    if (!hasBearer && !hasBridgeSecret) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
