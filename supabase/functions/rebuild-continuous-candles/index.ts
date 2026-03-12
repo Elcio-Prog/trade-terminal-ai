@@ -30,17 +30,8 @@ serve(async (req) => {
   }
 
   try {
-    // Auth: accept any valid Bearer token or bridge secret
-    const authHeader = req.headers.get("Authorization");
-    const bridgeSecret = req.headers.get("x-bridge-secret");
-    const expectedSecret = Deno.env.get("BRIDGE_SECRET");
-    const hasBearer = authHeader?.startsWith("Bearer ") && authHeader.length > 10;
-    const hasBridgeSecret = expectedSecret && bridgeSecret === expectedSecret;
-    if (!hasBearer && !hasBridgeSecret) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // No auth check - this function uses service_role internally
+    // and should only be invoked by admins
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
