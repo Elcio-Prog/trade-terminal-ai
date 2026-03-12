@@ -1,0 +1,1 @@
+DELETE FROM ml_training_data WHERE base_symbol = 'WIN' AND timeframe = 'M1';
