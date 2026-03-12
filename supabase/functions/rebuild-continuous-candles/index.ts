@@ -116,9 +116,10 @@ serve(async (req) => {
         roll_method: "max_liquidity_v2",
       }));
 
-      // Insert
+      // Upsert (handles partial inserts from timed-out runs)
       for (let i = 0; i < rows.length; i += 1000) {
-        const { error: insErr } = await supabase.from("continuous_market_candles").insert(rows.slice(i, i + 1000));
+        const { error: insErr } = await supabase.from("continuous_market_candles")
+          .upsert(rows.slice(i, i + 1000), { onConflict: "base_symbol,timeframe,ts_open" });
         if (insErr) throw new Error(`Insert ${day}: ${insErr.message}`);
       }
 
