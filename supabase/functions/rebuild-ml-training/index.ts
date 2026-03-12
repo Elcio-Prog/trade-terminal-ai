@@ -59,7 +59,7 @@ serve(async (req) => {
         .eq("timeframe", timeframe);
     }
 
-    const PAGE = 1000;
+    const PAGE = 990;
     const MAX_PAGES = 20;
     let offset = startOffset;
     let pagesProcessed = 0;
