@@ -127,7 +127,7 @@ serve(async (req) => {
         features.push({
           base_symbol: baseSymbol,
           timeframe,
-          source_type: "continuous_market_candles",
+          source_type: "time",
           source_table: "continuous_market_candles",
           source_row_id: c.id,
           ts_reference: c.ts_open,
