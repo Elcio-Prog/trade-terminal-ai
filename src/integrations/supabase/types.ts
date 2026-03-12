@@ -1270,7 +1270,7 @@ export type Database = {
           return_3: number | null
           return_5: number | null
           rsi: number | null
-          source_id: number | null
+          source_id: string | null
           source_type: string
           target_binary: number | null
           target_class: number | null
@@ -1326,7 +1326,7 @@ export type Database = {
           return_3?: number | null
           return_5?: number | null
           rsi?: number | null
-          source_id?: number | null
+          source_id?: string | null
           source_type?: string
           target_binary?: number | null
           target_class?: number | null
@@ -1382,7 +1382,7 @@ export type Database = {
           return_3?: number | null
           return_5?: number | null
           rsi?: number | null
-          source_id?: number | null
+          source_id?: string | null
           source_type?: string
           target_binary?: number | null
           target_class?: number | null
