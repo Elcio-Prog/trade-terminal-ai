@@ -1,0 +1,1 @@
+CREATE TABLE public.continuous_market_candles_backup AS SELECT * FROM public.continuous_market_candles;
