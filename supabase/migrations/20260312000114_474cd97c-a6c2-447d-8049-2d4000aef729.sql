@@ -1,0 +1,1 @@
+ALTER TABLE ml_training_data ALTER COLUMN source_id TYPE text USING source_id::text;
