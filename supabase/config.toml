@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.get-db-url]
 verify_jwt = false
+
+[functions.rebuild-continuous-features]
+verify_jwt = false
+
+[functions.rebuild-renko-features]
+verify_jwt = false
+
+[functions.rebuild-ml-training]
+verify_jwt = false
