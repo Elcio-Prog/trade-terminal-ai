@@ -2,58 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 220 20% 7%;
-    --foreground: 210 20% 90%;
+    --background: 225 25% 6%;
+    --foreground: 210 25% 92%;
 
-    --card: 220 18% 10%;
-    --card-foreground: 210 20% 90%;
+    --card: 225 22% 9%;
+    --card-foreground: 210 25% 92%;
 
-    --popover: 220 18% 12%;
-    --popover-foreground: 210 20% 90%;
+    --popover: 225 22% 11%;
+    --popover-foreground: 210 25% 92%;
 
     --primary: 199 89% 48%;
-    --primary-foreground: 220 20% 7%;
+    --primary-foreground: 225 25% 6%;
+    --primary-glow: 199 100% 60%;
 
-    --secondary: 220 16% 16%;
+    --secondary: 225 18% 14%;
     --secondary-foreground: 210 20% 80%;
 
-    --muted: 220 14% 14%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 225 16% 12%;
+    --muted-foreground: 220 15% 45%;
 
-    --accent: 199 89% 48%;
-    --accent-foreground: 220 20% 7%;
+    --accent: 45 100% 60%;
+    --accent-foreground: 225 25% 6%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 16% 18%;
-    --input: 220 16% 18%;
+    --border: 225 16% 15%;
+    --input: 225 16% 15%;
     --ring: 199 89% 48%;
 
-    --radius: 0.375rem;
+    --radius: 0.5rem;
 
     /* Trading-specific tokens */
     --bull: 142 71% 45%;
     --bear: 0 72% 51%;
-    --bull-muted: 142 40% 20%;
-    --bear-muted: 0 40% 20%;
+    --bull-muted: 142 30% 15%;
+    --bear-muted: 0 30% 15%;
+    --bull-glow: 142 71% 55%;
+    --bear-glow: 0 72% 60%;
     --warning: 38 92% 50%;
     --info: 199 89% 48%;
-    --terminal-bg: 220 22% 5%;
-    --panel-header: 220 16% 12%;
-    --panel-border: 220 16% 16%;
+    --terminal-bg: 225 28% 4%;
+    --panel-header: 225 22% 10%;
+    --panel-border: 225 16% 15%;
 
-    --sidebar-background: 220 22% 5%;
-    --sidebar-foreground: 210 20% 80%;
+    /* Premium tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(199, 89%, 48%), hsl(199, 100%, 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(45, 100%, 60%), hsl(38, 92%, 50%));
+    --gradient-bull: linear-gradient(135deg, hsl(142, 71%, 40%), hsl(142, 71%, 55%));
+    --gradient-bear: linear-gradient(135deg, hsl(0, 72%, 46%), hsl(0, 72%, 60%));
+    --shadow-glow: 0 0 20px -5px hsl(199 89% 48% / 0.3);
+    --shadow-card: 0 1px 3px 0 hsl(225 28% 4% / 0.5), 0 1px 2px -1px hsl(225 28% 4% / 0.5);
+    --shadow-elevated: 0 4px 12px -2px hsl(225 28% 4% / 0.6), 0 2px 6px -1px hsl(225 28% 4% / 0.4);
+
+    --sidebar-background: 225 28% 5%;
+    --sidebar-foreground: 210 20% 65%;
     --sidebar-primary: 199 89% 48%;
-    --sidebar-primary-foreground: 220 20% 7%;
-    --sidebar-accent: 220 16% 14%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 220 16% 16%;
+    --sidebar-primary-foreground: 225 25% 6%;
+    --sidebar-accent: 225 18% 12%;
+    --sidebar-accent-foreground: 210 25% 92%;
+    --sidebar-border: 225 16% 13%;
     --sidebar-ring: 199 89% 48%;
   }
 }
@@ -64,28 +76,47 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  .font-display {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+  }
 }
 
 @layer components {
+  /* Panel system */
   .panel {
-    @apply bg-card border border-border rounded-sm;
+    @apply bg-card border border-border rounded-lg;
+    box-shadow: var(--shadow-card);
   }
 
   .panel-header {
-    @apply px-3 py-2 border-b border-border flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground;
+    @apply px-4 py-3 border-b border-border flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground;
   }
 
   .panel-body {
-    @apply p-3;
+    @apply p-4;
   }
 
+  /* Premium card variant */
+  .card-premium {
+    @apply bg-card border border-border rounded-lg relative overflow-hidden;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .card-premium::before {
+    content: '';
+    @apply absolute inset-x-0 top-0 h-px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+  }
+
+  /* Status colors */
   .status-bull {
     @apply text-bull;
   }
@@ -95,25 +126,65 @@
   }
 
   .glow-bull {
-    box-shadow: 0 0 12px hsl(var(--bull) / 0.3);
+    box-shadow: 0 0 16px -4px hsl(var(--bull) / 0.3);
+    border-color: hsl(var(--bull) / 0.3);
   }
 
   .glow-bear {
-    box-shadow: 0 0 12px hsl(var(--bear) / 0.3);
+    box-shadow: 0 0 16px -4px hsl(var(--bear) / 0.3);
+    border-color: hsl(var(--bear) / 0.3);
   }
 
+  .glow-primary {
+    box-shadow: 0 0 16px -4px hsl(var(--primary) / 0.3);
+    border-color: hsl(var(--primary) / 0.3);
+  }
+
+  /* Data display */
   .data-row {
-    @apply flex items-center justify-between py-1.5 text-sm border-b border-border/50 last:border-0;
+    @apply flex items-center justify-between py-2 text-sm border-b border-border/50 last:border-0;
   }
 
   .data-label {
-    @apply text-muted-foreground text-xs uppercase tracking-wide;
+    @apply text-muted-foreground text-xs font-medium;
   }
 
   .data-value {
     @apply font-mono text-sm text-foreground;
   }
 
+  /* Metric card */
+  .metric-card {
+    @apply bg-card border border-border rounded-lg p-4 relative overflow-hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  .metric-card .metric-value {
+    @apply font-mono text-2xl font-bold text-foreground;
+  }
+
+  .metric-card .metric-label {
+    @apply text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1;
+  }
+
+  /* Status badge */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-semibold;
+  }
+
+  .status-badge-online {
+    @apply bg-bull-muted text-bull;
+  }
+
+  .status-badge-offline {
+    @apply bg-bear-muted text-bear;
+  }
+
+  .status-badge-warning {
+    @apply bg-warning/15 text-warning;
+  }
+
+  /* Scrollbar */
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
@@ -131,13 +202,76 @@
     background: hsl(var(--border));
     border-radius: 2px;
   }
+
+  /* Table premium */
+  .table-premium {
+    @apply w-full text-xs;
+  }
+
+  .table-premium thead {
+    @apply sticky top-0 bg-card z-10;
+  }
+
+  .table-premium th {
+    @apply py-3 px-4 text-left text-muted-foreground uppercase tracking-wider font-semibold text-[11px] border-b border-border;
+  }
+
+  .table-premium td {
+    @apply py-2.5 px-4 font-mono border-b border-border/30;
+  }
+
+  .table-premium tbody tr {
+    @apply transition-colors hover:bg-secondary/30;
+  }
+
+  /* Empty state */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .empty-state-icon {
+    @apply h-12 w-12 text-muted-foreground/30 mb-4;
+  }
+
+  .empty-state-title {
+    @apply text-sm font-medium text-muted-foreground mb-1;
+  }
+
+  .empty-state-description {
+    @apply text-xs text-muted-foreground/60;
+  }
 }
 
+/* Animations */
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* Skeleton loader */
+.skeleton {
+  @apply bg-secondary rounded animate-pulse;
 }
