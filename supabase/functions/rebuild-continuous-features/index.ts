@@ -41,7 +41,7 @@ serve(async (req) => {
     }
 
     const PAGE = 1000;
-    const MAX_PAGES = 10;
+    const MAX_PAGES = 30;
     let offset = startOffset;
     let pagesProcessed = 0;
     let totalInserted = 0;
