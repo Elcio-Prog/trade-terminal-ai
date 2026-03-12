@@ -52,15 +52,23 @@ serve(async (req) => {
     console.log(`[ml-training] offset=${startOffset} candle_count=${state.candle_count}`);
 
     if (deleteFirst) {
-      await supabase
-        .from("ml_training_data")
-        .delete()
-        .eq("base_symbol", baseSymbol)
-        .eq("timeframe", timeframe);
+      // Delete in batches to avoid Supabase row limit
+      let deleted = true;
+      while (deleted) {
+        const { data, error: delErr } = await supabase
+          .from("ml_training_data")
+          .delete()
+          .eq("base_symbol", baseSymbol)
+          .eq("timeframe", timeframe)
+          .select("id")
+          .limit(1000);
+        if (delErr) throw new Error(`Delete: ${delErr.message}`);
+        deleted = (data?.length || 0) === 1000;
+      }
     }
 
     const PAGE = 990;
-    const MAX_PAGES = 40;
+    const MAX_PAGES = 20;
     let offset = startOffset;
     let pagesProcessed = 0;
     let totalInserted = 0;
