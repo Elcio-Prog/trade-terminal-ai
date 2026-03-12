@@ -12,14 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    const bridgeSecret = req.headers.get("x-bridge-secret");
-    const expectedSecret = Deno.env.get("BRIDGE_SECRET");
-    if (expectedSecret && bridgeSecret !== expectedSecret && !authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Auth handled by Supabase gateway
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
