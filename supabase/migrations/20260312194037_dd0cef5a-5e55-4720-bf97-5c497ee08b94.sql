@@ -1,0 +1,2 @@
+ALTER TABLE public.continuous_market_candles_backup ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "authenticated_select_backup" ON public.continuous_market_candles_backup FOR SELECT TO authenticated USING (true);

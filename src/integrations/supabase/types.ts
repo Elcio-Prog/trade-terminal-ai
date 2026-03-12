@@ -563,6 +563,66 @@ export type Database = {
           },
         ]
       }
+      continuous_market_candles_backup: {
+        Row: {
+          base_symbol: string | null
+          close: number | null
+          created_at: string | null
+          high: number | null
+          id: string | null
+          low: number | null
+          open: number | null
+          roll_method: string | null
+          seq_no: number | null
+          source_instrument_id: string | null
+          source_symbol: string | null
+          timeframe: string | null
+          trade_count: number | null
+          ts_close: string | null
+          ts_open: string | null
+          volume: number | null
+          vwap: number | null
+        }
+        Insert: {
+          base_symbol?: string | null
+          close?: number | null
+          created_at?: string | null
+          high?: number | null
+          id?: string | null
+          low?: number | null
+          open?: number | null
+          roll_method?: string | null
+          seq_no?: number | null
+          source_instrument_id?: string | null
+          source_symbol?: string | null
+          timeframe?: string | null
+          trade_count?: number | null
+          ts_close?: string | null
+          ts_open?: string | null
+          volume?: number | null
+          vwap?: number | null
+        }
+        Update: {
+          base_symbol?: string | null
+          close?: number | null
+          created_at?: string | null
+          high?: number | null
+          id?: string | null
+          low?: number | null
+          open?: number | null
+          roll_method?: string | null
+          seq_no?: number | null
+          source_instrument_id?: string | null
+          source_symbol?: string | null
+          timeframe?: string | null
+          trade_count?: number | null
+          ts_close?: string | null
+          ts_open?: string | null
+          volume?: number | null
+          vwap?: number | null
+        }
+        Relationships: []
+      }
       continuous_market_renko: {
         Row: {
           base_symbol: string
