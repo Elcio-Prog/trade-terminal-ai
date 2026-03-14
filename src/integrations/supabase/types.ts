@@ -2248,12 +2248,14 @@ export type Database = {
           rsi_1h: number | null
           rsi_30m: number | null
           rsi_5m: number | null
+          sl_price: number | null
           source_id: string | null
           source_type: string | null
           target_binary: number | null
           target_class: number | null
           target_tb: number | null
           timeframe: string | null
+          tp_price: number | null
           trend_15m: number | null
           trend_1h: number | null
           trend_30m: number | null
@@ -2358,12 +2360,14 @@ export type Database = {
           rsi_1h?: number | null
           rsi_30m?: number | null
           rsi_5m?: number | null
+          sl_price?: number | null
           source_id?: string | null
           source_type?: string | null
           target_binary?: number | null
           target_class?: number | null
           target_tb?: number | null
           timeframe?: string | null
+          tp_price?: number | null
           trend_15m?: number | null
           trend_1h?: number | null
           trend_30m?: number | null
@@ -2468,12 +2472,14 @@ export type Database = {
           rsi_1h?: number | null
           rsi_30m?: number | null
           rsi_5m?: number | null
+          sl_price?: number | null
           source_id?: string | null
           source_type?: string | null
           target_binary?: number | null
           target_class?: number | null
           target_tb?: number | null
           timeframe?: string | null
+          tp_price?: number | null
           trend_15m?: number | null
           trend_1h?: number | null
           trend_30m?: number | null
