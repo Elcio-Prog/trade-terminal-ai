@@ -1,0 +1,1 @@
+CREATE INDEX idx_ml_training_ts_ref ON ml_training_data_tb (ts_ref);
